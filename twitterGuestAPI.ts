@@ -1,10 +1,25 @@
 /*
-web inspector
- -> Fetch/XHR
- -> Look for one starting with "TweetDetail?variables="
+--- info about how to find the APIs in twitter --
 
-for guest token API call you need to open a private window and open 
-webinspector before you go to twitter.com
+for getNewGuestToken():
+  open a private window and open webinspector before you go to twitter.com/search
+   -> go to twitter.com
+   -> in webinspector
+     -> Network tab
+     -> Fetch/XHR
+     -> Look for one named "activate.json"
+
+for getUnparsedTweets():
+  web inspector
+   -> Network tab
+   -> Fetch/XHR
+   -> Look for one starting with "TweetDetail?variables="
+
+for getUnparsedSearchQueryTweets():
+  web inspector
+   -> Network tab
+   -> Fetch/XHR
+   -> Look for one starting with "adaptive.json?"
 */
 
 
@@ -121,7 +136,7 @@ function parseTweetContents(tweetContents: any): Tweet | Quote {
     if (urls?.length > 0) {
         mainTweet.urls = [];
         for (const url of urls) {
-            const item: TweetUrls = {
+            const item: TweetURLs = {
                 twitterLink: url.url,
                 url: url.expanded_url,
             }
@@ -148,7 +163,7 @@ interface Tweet {
     user: string;
     text: string;
     media?: TweetMedia[];
-    urls?: TweetUrls[];
+    urls?: TweetURLs[];
     quote?: Quote;
     isThread?: boolean;
 }
@@ -166,7 +181,7 @@ interface TweetMedia {
  * @param twitterLink the twitter shortened url
  * @param url the original url
  */
-interface TweetUrls {
+interface TweetURLs {
     twitterLink: string;
     url: string;
 }
@@ -183,10 +198,10 @@ list of tweets, starting with the first tweet
 
 if more information is required than in @Tweet, use getUnparsedTweets() instead
 */
-export async function tweetsFromURL(url: string): Promise<Tweet[]> {
+export async function getTweetsFromURL(url: string): Promise<Tweet[]> {
 
-    const idFromInputUrl = url.split("/")[5];
-    const tweetGroups = await getUnparsedTweets(idFromInputUrl);
+    const idFromInputURL = url.split("/")[5];
+    const tweetGroups = await getUnparsedTweets(idFromInputURL);
     const allParsedTweets: Tweet[] = [];
 
     // -- find main tweet --
@@ -197,7 +212,7 @@ export async function tweetsFromURL(url: string): Promise<Tweet[]> {
         const entryId = tweetGroups[i].entryId;
         // "tweet-1516856286738598375" -> "1516856286738598375"
         const id = entryId?.substring(6);
-        if (id === idFromInputUrl) {
+        if (id === idFromInputURL) {
             break;
         }
     }
@@ -245,10 +260,10 @@ export async function tweetsFromURL(url: string): Promise<Tweet[]> {
     return allParsedTweets;
 }
 
-export async function getRecommendedTweetsFromUrl(url: string): Promise<Tweet[]> {
+export async function getRecommendedTweetsFromURL(url: string): Promise<Tweet[]> {
 
-    const idFromInputUrl = url.split("/")[5];
-    const tweetGroups = await getUnparsedTweets(idFromInputUrl, true);
+    const idFromInputURL = url.split("/")[5];
+    const tweetGroups = await getUnparsedTweets(idFromInputURL, true);
     // console.log(tweetGroups)
     const allParsedTweets: Tweet[] = [];
 
@@ -365,7 +380,7 @@ export async function getSearchQueryTweetsFromQuery(query: string): Promise<Twee
         if (urls?.length > 0) {
             tweet.urls = [];
             for (const url of urls) {
-                const item: TweetUrls = {
+                const item: TweetURLs = {
                     twitterLink: url.url,
                     url: url.expanded_url,
                 }
