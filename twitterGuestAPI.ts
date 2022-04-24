@@ -211,8 +211,8 @@ export async function tweetsFromURL(url: string): Promise<Tweet[]> {
         mainTweetUser = parsedTweet.user;
     }
 
-    // 🚨🚨🚨🚨 ONLY GET THREAD IF ITS THE FIRST TWEET, OR IF THE TWEET RIGHT 
-    // ABOVE IT IS A DIFFERENT USER
+    // ONLY GET THREAD IF ITS THE FIRST TWEET, OR IF THE TWEET RIGHT ABOVE IT 
+    // IS A DIFFERENT USER
     // in other words, if the main tweet is in the middle of a thread, don't get
     // the thread
     const mainIsFirstTweet = i === 0;
@@ -262,8 +262,6 @@ export async function getRecommendedTweetsFromUrl(url: string): Promise<Tweet[]>
 
     return allParsedTweets;
 }
-
-
 
 async function getUnparsedSearchQueryTweets(query: string): Promise<any> {
 
@@ -418,7 +416,3 @@ export async function getSearchQueryTweetsFromQuery(query: string): Promise<Twee
 
     return allParsedTweets;
 }
-
-const var1 = await getSearchQueryTweetsFromQuery("from:zhusu -filter:replies min_faves:700");
-// console.log(var1)
-
