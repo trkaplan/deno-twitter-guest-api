@@ -63,7 +63,6 @@ export async function queryToUnparsedTweets(query: string): Promise<any[]> {
         }
     }
     const gObj: TwitterQueryGlobalObjects = obj.globalObjects;
-    
 
     return [gObj.tweets, gObj.users];
 }
