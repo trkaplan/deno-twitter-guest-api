@@ -1,5 +1,5 @@
 import { Tweet } from "../types.ts";
-import { getUnparsedTweets } from "../fetch/getUnparsedTweets.ts";
+import { idToUnparsedTweets } from "../fetch/idToUnparsedTweets.ts";
 import { parseTweetContents } from "../parseTweetContents.ts";
 
 /**
@@ -8,10 +8,10 @@ list of tweets, starting with the first tweet
 
 if more information is required than in @Tweet, use getUnparsedTweets() instead
 */
-export async function getTweetsFromURL(url: string): Promise<Tweet[]> {
+export async function urlToTweets(url: string): Promise<Tweet[]> {
 
     const idFromInputURL = url.split("/")[5];
-    const tweetGroups = await getUnparsedTweets(idFromInputURL);
+    const tweetGroups = await idToUnparsedTweets(idFromInputURL);
     const allParsedTweets: Tweet[] = [];
 
     // -- find main tweet --

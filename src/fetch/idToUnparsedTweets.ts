@@ -1,4 +1,4 @@
-import { currentGuestToken, getNewGuestToken } from "../guestToken.ts";
+import { currentGuestToken, newGuestToken } from "../guestToken.ts";
 import { AUTHORIZATION, apiBase } from "../constants.ts";
 
 /**
@@ -7,7 +7,7 @@ import { AUTHORIZATION, apiBase } from "../constants.ts";
  * @param includeRecommendedTweets whether to include the recommended tweets 
  * section on the page
  */
-export async function getUnparsedTweets(
+export async function idToUnparsedTweets(
     tweetID: string,
     includeRecommendedTweets: boolean = false
     ): Promise<Array<any>> {
@@ -47,7 +47,7 @@ export async function getUnparsedTweets(
         }).then(r => r.json());
         // if guest token is expired, get a new one and try again
         if (obj.errors) {
-            guestToken = await getNewGuestToken();
+            guestToken = await newGuestToken();
         } else {
             // if guest token is valid, break
             break;

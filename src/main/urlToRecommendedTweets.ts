@@ -1,11 +1,11 @@
 import { Tweet } from "../types.ts";
-import { getUnparsedTweets } from "../fetch/getUnparsedTweets.ts";
+import { idToUnparsedTweets } from "../fetch/idToUnparsedTweets.ts";
 import { parseTweetContents } from "../parseTweetContents.ts";
 
-export async function getRecommendedTweetsFromURL(url: string): Promise<Tweet[]> {
+export async function urlToRecommendedTweets(url: string): Promise<Tweet[]> {
 
     const idFromInputURL = url.split("/")[5];
-    const tweetGroups = await getUnparsedTweets(idFromInputURL, true);
+    const tweetGroups = await idToUnparsedTweets(idFromInputURL, true);
     // console.log(tweetGroups)
     const allParsedTweets: Tweet[] = [];
 

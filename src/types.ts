@@ -2,6 +2,7 @@
  * @param id id number of tweet (last part of url)
  * @param user username of the account who posted the tweet
  * @param text the text of the tweet
+ * @param threadID id of the first tweet in the thread this tweet is in
  */
 export interface Tweet {
     id: string;
@@ -11,6 +12,7 @@ export interface Tweet {
     urls?: TweetURLs[];
     quote?: Quote;
     isThread?: boolean;
+    threadID?: string;
 }
 /**
  * @param twitterLink the twitter shortened url

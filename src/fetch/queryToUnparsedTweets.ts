@@ -1,7 +1,12 @@
-import { currentGuestToken, getNewGuestToken } from "../guestToken.ts";
+import { currentGuestToken, newGuestToken } from "../guestToken.ts";
 import { AUTHORIZATION, apiBase } from "../constants.ts";
 
-export async function getUnparsedSearchQueryTweets(query: string): Promise<any> {
+/**
+ * get unparsed twitter feed object from twitter search query
+ * @param query 
+ * @returns object with users and tweets
+ */
+export async function queryToUnparsedTweets(query: string): Promise<any[]> {
 
     const params = {
         include_profile_interstitial_type: "1",
@@ -48,16 +53,30 @@ export async function getUnparsedSearchQueryTweets(query: string): Promise<any> 
                 "authorization": AUTHORIZATION,
                 "x-guest-token": guestToken,
             },
-        }).then(r => r.json());
+        }).then(r => r.json())
         // if guest token is expired, get a new one and try again
         if (obj.errors) {
-            guestToken = await getNewGuestToken();
+            guestToken = await newGuestToken();
         } else {
             // if guest token is valid, break
             break;
         }
     }
+    const gObj: TwitterQueryGlobalObjects = obj.globalObjects;
+    
 
-    const tweets = obj.globalObjects;
-    return tweets;
+    return [gObj.tweets, gObj.users];
 }
+
+interface TwitterQueryGlobalObjects {
+    users: any;
+    tweets: any;
+    broadcasts?: any;
+    cards?: any;
+    lists?: any;
+    media?: any;
+    moments?: any;
+    places?: any;
+    topics?: any;
+}
+

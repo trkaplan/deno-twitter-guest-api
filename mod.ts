@@ -39,9 +39,9 @@ for getUnparsedSearchQueryTweets():
 
 
 
-export { getTweetsFromURL } from "./src/main/getTweetsFromURL.ts";
-export { getSearchQueryTweetsFromQuery } from "./src/main/getSearchQueryTweetsFromQuery.ts";
-export { getRecommendedTweetsFromURL } from "./src/main/getRecommendedTweetsFromURL.ts";
+export { urlToTweets } from "./src/main/urlToTweets.ts";
+export { queryToTweets } from "./src/main/queryToTweets.ts";
+export { urlToRecommendedTweets } from "./src/main/urlToRecommendedTweets.ts";
 
-export { getUnparsedTweets } from "./src/fetch/getUnparsedTweets.ts";
-export { getUnparsedSearchQueryTweets } from "./src/fetch/getUnparsedSearchQueryTweets.ts";
+export { idToUnparsedTweets } from "./src/fetch/idToUnparsedTweets.ts";
+export { queryToUnparsedTweets } from "./src/fetch/queryToUnparsedTweets.ts";

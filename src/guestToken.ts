@@ -1,12 +1,12 @@
 import { AUTHORIZATION } from "./constants.ts";
 
-export let currentGuestToken: string = await getNewGuestToken();
+export let currentGuestToken: string = await newGuestToken();
 
 /**
  * get "x-guest-token" for subsequent requests
  * @returns guest token
  */
-export async function getNewGuestToken(): Promise<string> {
+export async function newGuestToken(): Promise<string> {
 
     const obj = await fetch("https://api.twitter.com/1.1/guest/activate.json", {
         "method": "POST",
@@ -15,7 +15,10 @@ export async function getNewGuestToken(): Promise<string> {
             "authorization": AUTHORIZATION,
         },
     }).then(r => r.json())
-        .catch(() => "");
+        .catch(() => {
+            console.log("Error fetching guest token");
+            return ""
+        });
     
     return obj?.guest_token;
 }
