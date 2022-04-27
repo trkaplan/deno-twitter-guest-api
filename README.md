@@ -9,7 +9,7 @@ import {
     getSearchQueryTweetsFromQuery,
     getTweetsFromURL,
     getRecommendedTweetsFromURL
-} from "https://deno.land/x/deno_twitter_guest_api@v0.0.1/mod.ts";
+} from "https://deno.land/x/deno_twitter_guest_api@v0.0.2/mod.ts";
 ```
 
 ```js
