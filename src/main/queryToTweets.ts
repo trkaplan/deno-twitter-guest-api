@@ -144,16 +144,19 @@ export async function queryToTweets(query: string): Promise<QueryTweet[]> {
             if (quotedTweet) {
                 // add quote tweet to tweet that quotes it
                 tweet.quote = quotedTweet;
-                
+
                 // track added tweets, UNLESS TWEET THAT IS QUOTED IS BY SAME 
                 // USER OF FEED (e.g. from:elonmusk)
                 // (see comment above initiation of trackTweetIDsOfAdded)
 
                 // get array of users of the feed
-                const queryUsers = query.match(/(?<=from:)(.+?)(?=[ \)$])/g);
-                // add 
-                if (queryUsers?.includes(quotedTweet.user)) {
-                    quotedIds.push(quotedTweet.user);
+                // allowed chars in twitter name are same as \w https://web.archive.org/web/20210506165356/https://www.techwalla.com/articles/what-characters-are-allowed-in-a-twitter-name
+                const queryUsers = query.match(/(?<=from:)([\w]+)/g);
+                // add quoted tweet id to array of quoted tweet ids if different 
+                // user to feed user
+                const isDiffUser = ! queryUsers?.includes(quotedTweet.user)
+                if (isDiffUser) {
+                    quotedIds.push(quotedTweet.id);
                 }
             }
         }
@@ -164,6 +167,7 @@ export async function queryToTweets(query: string): Promise<QueryTweet[]> {
     // remove tweets that are quoted by other tweets
     tempTweets = [];
     for (const tweet of parsedTweets) {
+        // if tweet id is in quotedIds, it is a quoted tweet to be removed
         if (quotedIds.includes(tweet.id)) {
             // don't add nothing
         } else {
@@ -174,3 +178,4 @@ export async function queryToTweets(query: string): Promise<QueryTweet[]> {
 
     return parsedTweets;
 }
+

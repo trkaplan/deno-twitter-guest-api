@@ -46,3 +46,10 @@ Deno.test({
         }
     }
 });
+
+Deno.test("testing quote tweets", async () => {
+    const query = `from:balajis -filter:replies "Emotionally unavailable doesn’t even begin to describe Hayes Rutherford"`;
+    const tweets = await queryToTweets(query);
+    // console.log("LENGTH: ", tweets.length);
+    assert(tweets.length == 1);
+})
