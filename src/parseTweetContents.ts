@@ -1,6 +1,17 @@
 import { Tweet, TweetMedia, TweetURLs, Quote } from "./types.ts";
 
-export function parseTweetContents(tweetContents: any): Tweet | Quote {
+export function parseTweetContents(tweetContents: any): Tweet | Quote | null {
+
+    tweetContents = tweetContents.itemContent?.tweet_results?.result
+                    // handle quote tweet (if normal tweet (above) returns null)
+                    || tweetContents.quoted_status_result.result
+
+    // if the tweetItem is a "Show more" button, it has no .result, so 
+    // above will return null. if null, it's not a tweet, so return null
+    if (tweetContents === undefined) {
+        return null
+    }
+
     const mainTweet: Tweet | Quote = {
         id: tweetContents.legacy.id_str,
         user: tweetContents.core.user_results.result.legacy.screen_name,
@@ -31,10 +42,13 @@ export function parseTweetContents(tweetContents: any): Tweet | Quote {
     }
     const isQuote = tweetContents?.quoted_status_result
     if (isQuote) {
-        const quoteContents = tweetContents.quoted_status_result.result
-        mainTweet.quote = parseTweetContents(quoteContents)
-        mainTweet.quote.url = tweetContents.legacy.quoted_status_permalink
-        delete mainTweet.quote.url.display
+        const quote: Quote | null = parseTweetContents(tweetContents);
+        if (quote) {
+            mainTweet.quote = quote;
+            mainTweet.quote.url = tweetContents.legacy.quoted_status_permalink
+            delete mainTweet.quote.url.display
+        }
+        
     }
     return mainTweet;
 }

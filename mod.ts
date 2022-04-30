@@ -27,6 +27,18 @@ for getUnparsedSearchQueryTweets():
    -> Network tab
    -> Fetch/XHR
    -> Look for one starting with "adaptive.json?"
+
+
+-- iT SEEMS THE TWITTER STANDARD V1.1 API ATUALLY WORKS WITH GUEST TOKEN TOO --
+
+https://developer.twitter.com/en/docs/twitter-api/v1
+
+timeline:
+  https://developer.twitter.com/en/docs/twitter-api/v1/tweets/timelines/api-reference/get-statuses-user_timeline
+
+search:
+  https://developer.twitter.com/en/docs/twitter-api/v1/tweets/search/overview
+
 */
 
 
@@ -36,7 +48,6 @@ for getUnparsedSearchQueryTweets():
 - if thread contains show more button, need to get the next page of tweets
 
 */
-
 
 
 export { urlToTweets } from "./src/main/urlToTweets.ts";

@@ -22,7 +22,7 @@ Deno.test({
         const tweets: Tweet[] = await urlToTweets(url);
         assert(tweets.length > 1)
     }
-})
+});
 
 Deno.test({
     name: "urlToTweets() :: thread, mid-tweet",
@@ -31,7 +31,7 @@ Deno.test({
         const tweets: Tweet[] = await urlToTweets(url);
         assert(tweets.length == 1)
     }
-})
+});
 
 Deno.test({
     name: "urlToTweets() :: thread, last-tweet",
@@ -40,7 +40,7 @@ Deno.test({
         const tweets: Tweet[] = await urlToTweets(url);
         assert(tweets.length == 1)
     }
-})
+});
 
 Deno.test({
     name: "urlToTweets() :: not thread",
@@ -49,16 +49,25 @@ Deno.test({
         const tweets: Tweet[] = await urlToTweets(url);
         assert(tweets.length == 1)
     }
-})
+});
 
 Deno.test({
-    name: "urlToTweets() :: reply, not thread",
+    name: "urlToTweets() :: reply, not thread, items after reply",
     fn: async () => {
         const url = "https://twitter.com/OngoingStudy/status/1515926538662862850";
         const tweets: Tweet[] = await urlToTweets(url);
         assert(tweets.length == 1)
     }
-})
+});
+
+Deno.test({
+    name: "urlToTweets() :: reply, not thread, no items after reply",
+    fn: async () => {
+        const url = "https://twitter.com/ForbiddenSec/status/1514247615159975940";
+        const tweets: Tweet[] = await urlToTweets(url);
+        assert(tweets.length == 1)
+    }
+});
 
 Deno.test({
     name: "urlToTweets() :: reply, thread, 1st-tweet",
@@ -67,7 +76,7 @@ Deno.test({
         const tweets: Tweet[] = await urlToTweets(url);
         assert(tweets.length > 1)
     }
-})
+});
 
 // can't find yet
 
@@ -78,7 +87,7 @@ Deno.test({
 //         const tweets: Tweet[] = await urlToTweets(url);
 //         assert(tweets.length == 1)
 //     }
-// })
+// });
 
 Deno.test({
     name: "urlToTweets() :: reply, thread, last-tweet",
@@ -87,4 +96,4 @@ Deno.test({
         const tweets: Tweet[] = await urlToTweets(url);
         assert(tweets.length == 1)
     }
-})
+});

@@ -6,7 +6,7 @@ import { parseTweetContents } from "../parseTweetContents.ts";
 get a tweet/tweet-thread in a parsed format (most of the junk removed), as a
 list of tweets, starting with the first tweet
 
-if more information is required than in @Tweet, use getUnparsedTweets() instead
+if more information is required than in @interface Tweet, use getUnparsedTweets() instead
 */
 export async function urlToTweets(url: string): Promise<Tweet[]> {
 
@@ -14,58 +14,129 @@ export async function urlToTweets(url: string): Promise<Tweet[]> {
     const tweetGroups = await idToUnparsedTweets(idFromInputURL);
     const allParsedTweets: Tweet[] = [];
 
-    // -- find main tweet --
-    // need to do this bc even though usually the top furst tweet is the main 
-    // tweet, if the tweet is halfway down a thread it wont be the first tweet
-    let i: number;
-    for (i=0; i < tweetGroups.length; i++) {
+    // find out which tweet group contains the main tweet
+    const mainTweetIndex: number = getMainTweetIndex(tweetGroups, idFromInputURL);
+
+    // get main tweet
+    const mainTweet: Tweet[] = tweetGroupToTweets(tweetGroups[mainTweetIndex]);
+
+    /* ---- Examples of tweet patterns we need to match ----
+
+    1: (user1) -> user2 -> user3 -> user4   (single tweet)
+
+    2: user1 -> (user2) -> user3 -> user4   (single reply)
+
+    3: (user1) -> user1 -> user1 -> user3   (start tweet thread)
+    4: user1 -> (user1) -> user1 -> user3   (mid tweet thread)
+    5: user1 -> user1 -> (user1) -> user3   (end tweet thread)
+
+    6: user1 -> (user2) -> user2 -> user2   (start reply thread)
+    7: user1 -> user2 -> (user2) -> user2   (mid reply thread)
+    8: user1 -> user2 -> user2 -> (user2)   (end reply thread)
+
+    TWO MAIN TYPES OF TWEETS WE NEED TO PARSE:
+    1: tweet group at position 0 OR with diff user in prev tweet group
+          - if next tweet group is diff user, just add main tweet group to 
+            allParsedTweets
+          - if next tweet group is same user, add main tweet group, AND next tweet
+            group (thread) to allParsedTweets
+    2: tweet group with same user prev to main tweet group. this is either mid 
+       or end of thread/reply-thread
+          - for this, just add main tweet group to allParsedTweets
+    */
+
+    // if there is a next tweet group, get it
+    let nextTweetGroup: Tweet[] = [];
+   
+    if (tweetGroups[mainTweetIndex + 1]) {
+        nextTweetGroup = tweetGroupToTweets(tweetGroups[mainTweetIndex + 1]);
+    }
+
+    // if main tweet is first tweet, add first tweetGroup (main tweet), and 
+    // second tweetGroup (the thread) if it is same user, to allParsedTweets
+    if (mainTweetIndex == 0) {
+        allParsedTweets.push(...mainTweet);
+        if (nextTweetGroup) {
+            const thread: Tweet[] = nextTweetGroup;
+            // this is also false if thread doesn't exist
+            if (thread?.[0]?.user === mainTweet[0].user) {
+                allParsedTweets.push(...thread);
+            }
+        }
+        return allParsedTweets;
+    }
+
+    // get prev tweet group and next tweet group
+    const prevTweetGroup: Tweet[] = tweetGroupToTweets(tweetGroups[mainTweetIndex - 1]);
+    const prevTweetIsSameUser: boolean = prevTweetGroup[0].user === mainTweet[0].user;
+
+    // if prev tweet group is diff user, its first tweet of a reply
+    if (! prevTweetIsSameUser) {
+        const i = mainTweetIndex;
+        allParsedTweets.push(...mainTweet);
+        if (nextTweetGroup) {
+            const thread: Tweet[] = nextTweetGroup;
+            // this is also false if thread doesn't exist
+            if (thread?.[0]?.user === mainTweet[0].user) {
+                allParsedTweets.push(...thread);
+            }
+        }
+        return allParsedTweets;
+    }
+
+    // if prev tweet group is same user, it is mid/end of tweet thread, so just 
+    // return main tweet group
+    if (prevTweetIsSameUser) {
+        allParsedTweets.push(...mainTweet);
+    }
+
+    return allParsedTweets;
+}
+
+function getMainTweetIndex(tweetGroups: any, idFromInputURL: string): number {
+    for (let i=0; i < tweetGroups.length; i++) {
         const entryId = tweetGroups[i].entryId;
         // "tweet-1516856286738598375" -> "1516856286738598375"
         const id = entryId?.substring(6);
         if (id === idFromInputURL) {
+            return i;
+        }
+    }
+    // will never reach this return, but typescript complains if it isn't there
+    return 0;
+}
+
+function tweetItemGroupToTweet(tweetContents: any): Tweet | null {
+    const parsedTweet: Tweet | null = parseTweetContents(tweetContents);
+    return parsedTweet;
+}
+function tweetModuleGroupToTweets(tweetContents: any): Tweet[] | null {
+    let tweets: Tweet[] | null = [];
+    for (const tweetItem of tweetContents) {
+        const tweetContents = tweetItem.item;
+        const parsedTweet: Tweet | null = parseTweetContents(tweetContents);
+        // if the tweet is null, it's a "show more" tweet, so end of thread
+        if (parsedTweet === null) {
             break;
         }
+        tweets.push(parsedTweet);
     }
-    // -- get main tweet --
-    let mainTweetUser: string;
-    {
-        const tweet = tweetGroups[i];
-        const tweetContents = tweet.content.itemContent.tweet_results.result
-        const parsedTweet: Tweet = parseTweetContents(tweetContents)
-        allParsedTweets.push(parsedTweet);
-        mainTweetUser = parsedTweet.user;
-    }
+    return tweets;
+}
 
-    // ONLY GET THREAD IF ITS THE FIRST TWEET, OR IF THE TWEET RIGHT ABOVE IT 
-    // IS A DIFFERENT USER
-    // in other words, if the main tweet is in the middle of a thread, don't get
-    // the thread
-    const mainIsFirstTweet = i === 0;
-    let prevTweetNotSameUser: boolean = true; // changes to false if the previous tweet is from the same user
-    if (! mainIsFirstTweet) {
-        const prevTweet = tweetGroups[i-1];
-        const prevTweetContents = prevTweet.content.itemContent.tweet_results.result
-        const parsedPrevTweet: Tweet = parseTweetContents(prevTweetContents)
-        const prevTweetUser = parsedPrevTweet.user;
-        prevTweetNotSameUser = prevTweetUser !== mainTweetUser;
-    }
-    if (mainIsFirstTweet || prevTweetNotSameUser) {
-        const tweetThread = tweetGroups[i + 1];
-        const tweetThreadItems = tweetThread.content.items;
-        for (const tweetItem of tweetThreadItems) {
-            const tweetContents = tweetItem.item.itemContent.tweet_results?.result;
-            // if the tweetItem is a "Show more" button, it has no .result, so 
-            // above will return null. if null, it's not a tweet, so break
-            if (tweetContents === undefined) {
-                break;
-            }
-            const parsedTweet: Tweet = parseTweetContents(tweetContents);
-            // check if tweet is in thread, if not then it is a reply so exit
-            if (parsedTweet.user !== allParsedTweets[0].user) {
-                break;
-            }
-            allParsedTweets.push(parsedTweet);
+function tweetGroupToTweets(tweetGroup: any): Tweet[] {
+    const returnTweets: Tweet[] = [];
+    const contents = tweetGroup.content?.items;
+    if (contents) {
+        const tweets = tweetModuleGroupToTweets(contents);
+        if (tweets) {
+            returnTweets.push(...tweets);
+        }
+    } else {
+        const tweet = tweetItemGroupToTweet(tweetGroup.content)
+        if (tweet) {
+            returnTweets.push(tweet);
         }
     }
-    return allParsedTweets;
+    return returnTweets;
 }

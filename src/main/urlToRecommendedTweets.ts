@@ -12,9 +12,11 @@ export async function urlToRecommendedTweets(url: string): Promise<Tweet[]> {
     // all recommended tweets are in second-last tweetGroup item
     let recommendedTweets = tweetGroups[tweetGroups.length - 2].content.items;
     for (const tweet of recommendedTweets) {
-        const tweetContents = tweet.item.itemContent.tweet_results.result;
-        const parsedTweet: Tweet = parseTweetContents(tweetContents);
-        allParsedTweets.push(parsedTweet);
+        const tweetContents = tweet.item;
+        const parsedTweet: Tweet | null = parseTweetContents(tweetContents);
+        if (parsedTweet) {
+            allParsedTweets.push(parsedTweet);
+        }
     }
 
     return allParsedTweets;
