@@ -19,7 +19,7 @@ export async function urlToTweets(url: string): Promise<Tweet[]> {
 
     // get main tweet
     const mainTweet: Tweet[] = tweetGroupToTweets(tweetGroups[mainTweetIndex]);
-
+    
     /* ---- Examples of tweet patterns we need to match ----
 
     1: (user1) -> user2 -> user3 -> user4   (single tweet)
@@ -48,9 +48,15 @@ export async function urlToTweets(url: string): Promise<Tweet[]> {
     // if there is a next tweet group, get it
     let nextTweetGroup: Tweet[] = [];
    
-    if (tweetGroups[mainTweetIndex + 1]) {
-        nextTweetGroup = tweetGroupToTweets(tweetGroups[mainTweetIndex + 1]);
+    const nextGroup = tweetGroups[mainTweetIndex + 1]
+    console.log(nextGroup);
+    //                                   this handles show more button
+    const isNotShowMore = nextGroup?.content?.itemContent?.cursorType !== "ShowMoreThreadsPrompt";
+    const nextGroupExists = nextGroup && isNotShowMore;
+    if (nextGroupExists) {
+        nextTweetGroup = tweetGroupToTweets(nextGroup);
     }
+    console.log("HERE");
 
     // if main tweet is first tweet, add first tweetGroup (main tweet), and 
     // second tweetGroup (the thread) if it is same user, to allParsedTweets
@@ -114,7 +120,16 @@ function tweetModuleGroupToTweets(tweetContents: any): Tweet[] | null {
     let tweets: Tweet[] | null = [];
     for (const tweetItem of tweetContents) {
         const tweetContents = tweetItem.item;
+        console.log("tweetContents");
+        console.log(tweetContents);
+
+        // if its a "show more" item, dont add
+        if (tweetContents?.itemContent?.displayTreatment?.actionText === "Show replies") {
+            break;
+        }
+
         const parsedTweet: Tweet | null = parseTweetContents(tweetContents);
+
         // if the tweet is null, it's a "show more" tweet, so end of thread
         if (parsedTweet === null) {
             break;
