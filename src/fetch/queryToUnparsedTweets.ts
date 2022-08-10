@@ -1,12 +1,16 @@
-import { currentGuestToken, newGuestToken } from "../guestToken.ts";
+import { currentGuestToken, newGuestToken } from "./guestToken.ts";
 import { AUTHORIZATION, apiBase } from "../constants.ts";
+import { defaultFetch } from "./defaultFetch.ts";
 
 /**
  * get unparsed twitter feed object from twitter search query
  * @param query 
  * @returns object with users and tweets
  */
-export async function queryToUnparsedTweets(query: string): Promise<any[]> {
+export async function queryToUnparsedTweets(
+    query: string,
+    fetchFn: (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any> = defaultFetch
+    ): Promise<any[]> {
 
     const params = {
         include_profile_interstitial_type: "1",
@@ -45,22 +49,11 @@ export async function queryToUnparsedTweets(query: string): Promise<any[]> {
     const url = apiBase + "2/search/adaptive.json?" + paramsString;
 
     let guestToken = currentGuestToken;
-    let obj: any;
-    for (const i of [1, 2]) {
-        obj = await fetch(url, {
-            "credentials": "omit",
-            "headers": {
-                "authorization": AUTHORIZATION,
-                "x-guest-token": guestToken,
-            },
-        }).then(r => r.json())
-        // if guest token is expired, get a new one and try again
-        if (obj.errors) {
-            guestToken = await newGuestToken();
-        } else {
-            // if guest token is valid, break
-            break;
-        }
+    let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
+    // if guest token is expired, get a new one and try again
+    if (obj.errors) {
+        guestToken = await newGuestToken(fetchFn);
+        obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
     const gObj: TwitterQueryGlobalObjects = obj.globalObjects;
 
@@ -78,4 +71,3 @@ interface TwitterQueryGlobalObjects {
     places?: any;
     topics?: any;
 }
-

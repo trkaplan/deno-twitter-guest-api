@@ -26,3 +26,59 @@ const tweets = await getTweetsFromURL("https://twitter.com/zhusu/status/15166756
 // get recommended tweets based on tweet url
 const tweets = await getRecommendedTweetsFromURL("https://twitter.com/zhusu/status/1516675652438851589");
 ```
+## fetch compatibility
+
+if the default fetch function is not compatible (e.g. if using tauri or 
+electron), you can simply create a new fetch function wrapper and pass it into any of the functions you call.
+
+this is the default fetch wrapper:
+```ts
+async function defaultFetch(
+    url: string,
+    method: string,
+    AUTHORIZATION: string,
+    xGuestToken: string = "", // must include default value of `""`
+    ): Promise<any> {
+    
+    const headers = {
+        "authorization": AUTHORIZATION,
+    };
+    if (xGuestToken !== "") {
+        headers["x-guest-token"] = xGuestToken;
+    }
+    return await fetch(url, {
+            "method": method, // e.g. "GET" or "POST"
+            "credentials": "omit",
+            "headers": headers,
+        })
+        .then(r => r.json())
+}
+```
+
+this is an example for tauri:
+```ts
+import { fetch } from "@tauri-apps/api/http";
+
+async function tauriFetch(
+    url: string,
+    method: string,
+    AUTHORIZATION: string,
+    xGuestToken: string = "",
+    ): Promise<any> {
+    
+    const headers = {
+        "authorization": AUTHORIZATION,
+    };
+    if (xGuestToken !== "") {
+        headers["x-guest-token"] = xGuestToken;
+    }
+    return await fetch(url, {
+            "method": method,
+            "headers": headers,
+        })
+        .then(r => r.data)
+}
+
+// then call a function with the fetch function as an argument:
+const  = await queryToTweets("from:ElonMusk", tauriFetch);
+```

@@ -1,6 +1,7 @@
 import { Tweet } from "../types.ts";
 import { idToUnparsedTweets } from "../fetch/idToUnparsedTweets.ts";
 import { parseTweetContents } from "../parseTweetContents.ts";
+import { defaultFetch } from "../fetch/defaultFetch.ts";
 
 /**
 get a tweet/tweet-thread in a parsed format (most of the junk removed), as a
@@ -8,10 +9,13 @@ list of tweets, starting with the first tweet
 
 if more information is required than in @interface Tweet, use getUnparsedTweets() instead
 */
-export async function urlToTweets(url: string): Promise<Tweet[]> {
+export async function urlToTweets(
+    url: string,
+    fetchFn: (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any> = defaultFetch
+    ): Promise<Tweet[]> {
 
     const idFromInputURL = url.split("/")[5];
-    const tweetGroups = await idToUnparsedTweets(idFromInputURL);
+    const tweetGroups = await idToUnparsedTweets(idFromInputURL, false, fetchFn);
     const allParsedTweets: Tweet[] = [];
 
     // find out which tweet group contains the main tweet

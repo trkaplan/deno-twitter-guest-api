@@ -4,7 +4,7 @@
  * @param text the text of the tweet
  * @param threadID id of the first tweet in the thread this tweet is in
  */
-export interface Tweet {
+ export interface Tweet {
     id: string;
     user: string;
     text: string;
@@ -15,22 +15,23 @@ export interface Tweet {
     threadID?: string;
 }
 /**
- * @param twitterLink the twitter shortened url
- * @param url the original image url
+ * @param shortenedImgURL the twitter shortened url
+ * @param fullImgURL the original image url
  * @param type photo or video
  */
 export interface TweetMedia {
-    twitterLink: string;
-    url: string;
-    type: string;
+    shortenedImgURL: string
+    fullImgURL: string
+    type: string
+    videoURL?: string
 }
 /**
- * @param twitterLink the twitter shortened url
- * @param url the original url
+ * @param shortenedURL the twitter shortened url
+ * @param fullURL the original url
  */
 export interface TweetURLs {
-    twitterLink: string;
-    url: string;
+    shortenedURL: string
+    fullURL: string
 }
 /**
  * @param url the url of the quoted tweet

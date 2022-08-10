@@ -1,5 +1,6 @@
-import { currentGuestToken, newGuestToken } from "../guestToken.ts";
+import { currentGuestToken, newGuestToken } from "./guestToken.ts";
 import { AUTHORIZATION, apiBase } from "../constants.ts";
+import { defaultFetch } from "./defaultFetch.ts";
 
 /**
  * call twitter API to get all tweets on a the page with tweet id tweetID
@@ -9,7 +10,8 @@ import { AUTHORIZATION, apiBase } from "../constants.ts";
  */
 export async function idToUnparsedTweets(
     tweetID: string,
-    includeRecommendedTweets: boolean = false
+    includeRecommendedTweets: boolean = false,
+    fetchFn: (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any> = defaultFetch
     ): Promise<Array<any>> {
     
     const variables = {
@@ -36,24 +38,12 @@ export async function idToUnparsedTweets(
                 + encodeURI(JSON.stringify(variables));
 
     let guestToken = currentGuestToken;
-    let obj: any;
-    for (const i of [1, 2]) {
-        obj = await fetch(url, {
-            "credentials": "omit",
-            "headers": {
-                "authorization": AUTHORIZATION,
-                "x-guest-token": guestToken,
-            },
-        }).then(r => r.json());
-        // if guest token is expired, get a new one and try again
-        if (obj.errors) {
-            guestToken = await newGuestToken();
-        } else {
-            // if guest token is valid, break
-            break;
-        }
+    let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
+    // if guest token is expired, get a new one and try again
+    if (obj.errors) {
+        guestToken = await newGuestToken(fetchFn);
+        obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-
     const tweets = obj.data.threaded_conversation_with_injections_v2
                     .instructions[0].entries
     // console.log(tweets);
