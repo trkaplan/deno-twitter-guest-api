@@ -15,9 +15,9 @@ async function defaultFetch(url, method, AUTHORIZATION, xGuestToken = "") {
         "method": method,
         "credentials": "omit",
         "headers": headers
-    }).then((r)=>r.json());
+    }).then((r)=>r.json()).catch(()=>({}));
 }
-let currentGuestToken;
+let currentGuestToken = await newGuestToken() || "fake-token";
 async function newGuestToken(fetchFn = defaultFetch) {
     const url = "https://api.twitter.com/1.1/guest/activate.json";
     const obj = await fetchFn(url, "POST", AUTHORIZATION, "").catch(()=>{
@@ -50,11 +50,11 @@ async function idToUnparsedTweets(tweetID, includeRecommendedTweets = false, fet
     let url = apiBase + "graphql/L1DeQfPt7n3LtTvrBqkJ2g/TweetDetail?variables=" + encodeURI(JSON.stringify(variables));
     let guestToken = currentGuestToken;
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
-    if (obj.errors) {
+    if (obj?.errors) {
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const tweets = obj.data.threaded_conversation_with_injections_v2.instructions[0].entries;
+    const tweets = obj?.data?.threaded_conversation_with_injections_v2?.instructions?.[0]?.entries;
     return tweets;
 }
 function parseTweetContents(tweetContents) {
@@ -228,14 +228,14 @@ async function queryToUnparsedTweets(query, fetchFn = defaultFetch) {
     const url = apiBase + "2/search/adaptive.json?" + paramsString;
     let guestToken = currentGuestToken;
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
-    if (obj.errors) {
+    if (obj?.errors || JSON.stringify(obj) === "{}") {
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const gObj = obj.globalObjects;
+    const gObj = obj?.globalObjects;
     return [
-        gObj.tweets,
-        gObj.users
+        gObj?.tweets,
+        gObj?.users
     ];
 }
 async function queryToTweets(query, fetchFn = defaultFetch) {
