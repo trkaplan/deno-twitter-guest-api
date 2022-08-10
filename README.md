@@ -27,7 +27,7 @@ const tweets = await getTweetsFromURL("https://twitter.com/zhusu/status/15166756
 const tweets = await getRecommendedTweetsFromURL("https://twitter.com/zhusu/status/1516675652438851589");
 ```
 
-# use outside of deno (node/tauri/electron/browser)
+## use outside of deno (node/tauri/electron/browser)
 
 since this library is in deno-flavored typescript, you must transpile the library to a javascript bundle (or you could just copy the one i made (in this repo; `twitterGuestAPI.bundle.js`)):
 ```shell
@@ -37,7 +37,7 @@ cd deno-twitter-guest-api
 deno bundle ./mod.ts twitterGuestAPI.bundle.js
 ```
 
-## fetch compatibility
+### fetch compatibility
 
 if the default fetch function is not compatible (e.g. if using tauri or 
 electron), you can simply create a new fetch function wrapper and pass it into any of the functions you call.
@@ -94,12 +94,9 @@ async function tauriFetch(
 const  = await queryToTweets("from:ElonMusk", tauriFetch);
 ```
 
-# extra info about how to find twitter's private APIs
+## extra info about how to find twitter's private APIs
 
 ```
-/*
---- info about how to find the APIs in twitter --
-
 for getNewGuestToken():
   open a private window and open webinspector before you go to twitter.com/search
    -> go to twitter.com
@@ -130,11 +127,7 @@ timeline:
 
 search:
   https://developer.twitter.com/en/docs/twitter-api/v1/tweets/search/overview
-
-*/
-
 ```
 
-
-# TODO
+## TODO
 - if thread contains show more button, need to get the next page of tweets
