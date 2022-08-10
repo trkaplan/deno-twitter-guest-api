@@ -63,6 +63,7 @@ async function defaultFetch(
             "headers": headers,
         })
         .then(r => r.json())
+        .catch(() => ({}));
 }
 ```
 
@@ -88,6 +89,7 @@ async function tauriFetch(
             "headers": headers,
         })
         .then(r => r.data)
+        .catch(() => ({}));
 }
 
 // then call a function with the fetch function as an argument:

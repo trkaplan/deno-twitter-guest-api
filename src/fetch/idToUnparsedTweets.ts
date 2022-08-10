@@ -40,12 +40,12 @@ export async function idToUnparsedTweets(
     let guestToken = currentGuestToken;
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     // if guest token is expired, get a new one and try again
-    if (obj.errors) {
+    if (obj?.errors) {
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const tweets = obj.data.threaded_conversation_with_injections_v2
-                    .instructions[0].entries
+    const tweets = obj?.data?.threaded_conversation_with_injections_v2
+                    ?.instructions?.[0]?.entries;
     // console.log(tweets);
     return tweets;
 }

@@ -3,7 +3,7 @@
 
 deno test --allow-net
 
-deno test --allow-net src/main/queryToTweets_test.ts
+deno test --allow-net src/main/queryToTweets.test.ts
 
 */
 
@@ -34,8 +34,9 @@ import { assert } from "https://deno.land/std/testing/asserts.ts";
 Deno.test({
     name: "queryToTweets() - query that gets only retweets - testing retweet parsing",
     fn: async () => {
-        const query = "from:zhusu filter:nativeretweets include:nativeretweets";
-        const tweets = await queryToTweets(query)
+        console.log("test!!")
+        const query = "from:elonmusk filter:nativeretweets include:nativeretweets";
+        const tweets = await queryToTweets(query);
         // console.log("LENGTH: ", tweets.length);
         // console.log(tweets.map(x => x.text));
         assert(tweets.length > 0);

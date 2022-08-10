@@ -51,13 +51,13 @@ export async function queryToUnparsedTweets(
     let guestToken = currentGuestToken;
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     // if guest token is expired, get a new one and try again
-    if (obj.errors) {
+    if (obj?.errors || JSON.stringify(obj) === "{}") {
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const gObj: TwitterQueryGlobalObjects = obj.globalObjects;
+    const gObj: TwitterQueryGlobalObjects = obj?.globalObjects;
 
-    return [gObj.tweets, gObj.users];
+    return [gObj?.tweets, gObj?.users];
 }
 
 interface TwitterQueryGlobalObjects {

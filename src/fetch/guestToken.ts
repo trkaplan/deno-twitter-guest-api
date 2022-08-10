@@ -1,9 +1,9 @@
 import { AUTHORIZATION } from "../constants.ts";
 import { defaultFetch } from "./defaultFetch.ts";
 
-// don't initialize the token yet bc need user to be able to pass their own 
-// fetch function in
-export let currentGuestToken: string;
+// might not be able to gett token if default fetch function incompatible, but 
+// if fetch wrapper passed in, it will get token on 2nd try
+export let currentGuestToken: string = await newGuestToken() || "fake-token";
 
 /**
  * get "x-guest-token" for subsequent requests
