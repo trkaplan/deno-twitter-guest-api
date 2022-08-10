@@ -1,8 +1,8 @@
-# Deno twitter guest api
+# deno twitter guest api
 
-Basic twitter api for [Deno](https://deno.land) that doesn't require you to have a twitter account to use.
+basic twitter api for [deno](https://deno.land) that doesn't require you to have a twitter account to use
 
-## Use
+## use
 
 ```js
 import {
@@ -26,6 +26,17 @@ const tweets = await getTweetsFromURL("https://twitter.com/zhusu/status/15166756
 // get recommended tweets based on tweet url
 const tweets = await getRecommendedTweetsFromURL("https://twitter.com/zhusu/status/1516675652438851589");
 ```
+
+# use outside of deno (node/tauri/electron/browser)
+
+since this library is in deno-flavored typescript, you must transpile the library to a javascript bundle (or you could just copy the one i made (in this repo; `twitterGuestAPI.bundle.js`)):
+```shell
+git clone https://github.com/nogira/deno-twitter-guest-api.git
+cd deno-twitter-guest-api
+# use file `mod.ts` as entry point to transpile library to the new file `twitterGuestAPI.bundle.js`
+deno bundle ./mod.ts twitterGuestAPI.bundle.js
+```
+
 ## fetch compatibility
 
 if the default fetch function is not compatible (e.g. if using tauri or 
@@ -82,3 +93,48 @@ async function tauriFetch(
 // then call a function with the fetch function as an argument:
 const  = await queryToTweets("from:ElonMusk", tauriFetch);
 ```
+
+# extra info about how to find twitter's private APIs
+
+```
+/*
+--- info about how to find the APIs in twitter --
+
+for getNewGuestToken():
+  open a private window and open webinspector before you go to twitter.com/search
+   -> go to twitter.com
+   -> in webinspector
+     -> Network tab
+     -> Fetch/XHR
+     -> Look for one named "activate.json"
+
+for getUnparsedTweets():
+  web inspector
+   -> Network tab
+   -> Fetch/XHR
+   -> Look for one starting with "TweetDetail?variables="
+
+for getUnparsedSearchQueryTweets():
+  web inspector
+   -> Network tab
+   -> Fetch/XHR
+   -> Look for one starting with "adaptive.json?"
+
+
+-- iT SEEMS THE TWITTER STANDARD V1.1 API ACTUALLY WORKS WITH GUEST TOKEN TOO --
+
+https://developer.twitter.com/en/docs/twitter-api/v1
+
+timeline:
+  https://developer.twitter.com/en/docs/twitter-api/v1/tweets/timelines/api-reference/get-statuses-user_timeline
+
+search:
+  https://developer.twitter.com/en/docs/twitter-api/v1/tweets/search/overview
+
+*/
+
+```
+
+
+# TODO
+- if thread contains show more button, need to get the next page of tweets

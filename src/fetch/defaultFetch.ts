@@ -5,7 +5,7 @@ export async function defaultFetch(
     xGuestToken: string = "",
     ): Promise<any> {
     
-    const headers = {
+    const headers: any = {
         "authorization": AUTHORIZATION,
     };
     if (xGuestToken !== "") {

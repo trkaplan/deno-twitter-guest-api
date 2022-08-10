@@ -22,8 +22,8 @@ export function parseTweetContents(tweetContents: any): Tweet | Quote | null {
         mainTweet.media = []
         for (const img of media) {
             const item: TweetMedia = {
-                twitterLink: img.url,
-                url: img.media_url_https,
+                shortenedImgURL: img.url,
+                fullImgURL: img.media_url_https,
                 type: img.type, // photo or video
             }
             mainTweet.media.push(item);
@@ -34,8 +34,8 @@ export function parseTweetContents(tweetContents: any): Tweet | Quote | null {
         mainTweet.urls = [];
         for (const url of urls) {
             const item: TweetURLs = {
-                twitterLink: url.url,
-                url: url.expanded_url,
+                shortenedURL: url.url,
+                fullURL: url.expanded_url,
             }
             mainTweet.urls.push(item);
         }

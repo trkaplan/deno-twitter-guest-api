@@ -10,10 +10,10 @@ export let currentGuestToken: string;
  * @returns guest token
  */
 export async function newGuestToken(
-    fetchFn: (url: string, method: string, AUTHORIZATION: string) => Promise<any> = defaultFetch
+    fetchFn: (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any> = defaultFetch
     ): Promise<string> {
     const url = "https://api.twitter.com/1.1/guest/activate.json";
-    const obj = await fetchFn(url, "POST", AUTHORIZATION)
+    const obj = await fetchFn(url, "POST", AUTHORIZATION, "") // had to do add `xGuestToken` arg ("") bc typescript made me :(
         .catch(() => {
             console.log("Error fetching guest token");
             return {}
