@@ -3,7 +3,7 @@
 
 deno test --allow-net
 
-deno test --allow-net src/main/urlToTweets_test.ts
+deno test --allow-net src/main/urlToTweets.test.ts
 
 */
 
@@ -117,3 +117,17 @@ Deno.test({
 //         assert(tweets.length == 1)
 //     }
 // });
+
+Deno.test({
+    name: "urlToTweets() :: first tweet, thread, quote tweet",
+    fn: async  () => {
+        const url = "https://twitter.com/balajis/status/1505385989191073793";
+        const tweets: Tweet[] = await urlToTweets(url);
+
+        // console.log(tweets[0])
+        // console.log(tweets[0]?.quote?.text)
+        // console.log(tweets[0]?.text)
+
+        assert(tweets.length > 1)
+    }
+})

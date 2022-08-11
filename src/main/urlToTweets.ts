@@ -53,14 +53,14 @@ export async function urlToTweets(
     let nextTweetGroup: Tweet[] = [];
    
     const nextGroup = tweetGroups[mainTweetIndex + 1]
-    console.log(nextGroup);
+    // console.log(nextGroup);
     //                                   this handles show more button
     const isNotShowMore = nextGroup?.content?.itemContent?.cursorType !== "ShowMoreThreadsPrompt";
     const nextGroupExists = nextGroup && isNotShowMore;
     if (nextGroupExists) {
         nextTweetGroup = tweetGroupToTweets(nextGroup);
     }
-    console.log("HERE");
+    // console.log("HERE");
 
     // if main tweet is first tweet, add first tweetGroup (main tweet), and 
     // second tweetGroup (the thread) if it is same user, to allParsedTweets
@@ -124,8 +124,8 @@ function tweetModuleGroupToTweets(tweetContents: any): Tweet[] | null {
     let tweets: Tweet[] | null = [];
     for (const tweetItem of tweetContents) {
         const tweetContents = tweetItem.item;
-        console.log("tweetContents");
-        console.log(tweetContents);
+        // console.log("tweetContents");
+        // console.log(tweetContents);
 
         // if its a "show more" item, dont add
         if (tweetContents?.itemContent?.displayTreatment?.actionText === "Show replies") {

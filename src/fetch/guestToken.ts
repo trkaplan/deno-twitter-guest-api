@@ -1,9 +1,7 @@
 import { AUTHORIZATION } from "../constants.ts";
 import { defaultFetch } from "./defaultFetch.ts";
 
-// might not be able to gett token if default fetch function incompatible, but 
-// if fetch wrapper passed in, it will get token on 2nd try
-export let currentGuestToken: string = await newGuestToken() || "fake-token";
+export let currentGuestToken: string = "";
 
 /**
  * get "x-guest-token" for subsequent requests

@@ -31,26 +31,31 @@ import { assert } from "https://deno.land/std/testing/asserts.ts";
 //     }
 // });
 
-Deno.test({
-    name: "queryToTweets() - query that gets only retweets - testing retweet parsing",
-    fn: async () => {
-        console.log("test!!")
-        const query = "from:elonmusk filter:nativeretweets include:nativeretweets";
-        const tweets = await queryToTweets(query);
-        // console.log("LENGTH: ", tweets.length);
-        // console.log(tweets.map(x => x.text));
-        assert(tweets.length > 0);
-        const tweetTexts = tweets.map(x => x.text);
-        for (const text of tweetTexts) {
-            // throws error if finds a retweet
-            assert(! text.match(/^RT @.+?: /));
-        }
-    }
-});
+// Deno.test({
+//     name: "queryToTweets() - query that gets only retweets - testing retweet parsing",
+//     fn: async () => {
+//         console.log("test!!")
+//         const query = "from:elonmusk filter:nativeretweets include:nativeretweets";
+//         const tweets = await queryToTweets(query);
+//         // console.log("LENGTH: ", tweets.length);
+//         // console.log(tweets.map(x => x.text));
+//         assert(tweets.length > 0);
+//         const tweetTexts = tweets.map(x => x.text);
+//         for (const text of tweetTexts) {
+//             // throws error if finds a retweet
+//             assert(! text.match(/^RT @.+?: /));
+//         }
+//     }
+// });
 
-// Deno.test("testing quote tweets", async () => {
-//     const query = `from:balajis -filter:replies "Emotionally unavailable doesn’t even begin to describe Hayes Rutherford"`;
-//     const tweets = await queryToTweets(query);
-//     // console.log("LENGTH: ", tweets.length);
-//     assert(tweets.length == 1);
-// })
+Deno.test("testing quote tweets", async () => {
+    const query = `from:balajis -filter:replies "Emotionally unavailable doesn’t even begin to describe Hayes Rutherford"`;
+    const tweets: any[] = await queryToTweets(query);
+    // console.log("LENGTH: ", tweets.length);
+    // console.log(tweets)
+    // for (const t in tweets) {
+    //     const tweet: any = t;
+    //     console.log(tweet?.quote)
+    // }
+    assert(tweets.length == 1);
+})

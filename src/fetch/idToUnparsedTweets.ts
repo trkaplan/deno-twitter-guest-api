@@ -37,7 +37,7 @@ export async function idToUnparsedTweets(
     let url = apiBase + "graphql/L1DeQfPt7n3LtTvrBqkJ2g/TweetDetail?variables="
                 + encodeURI(JSON.stringify(variables));
 
-    let guestToken = currentGuestToken;
+    let guestToken = currentGuestToken || await newGuestToken(fetchFn);
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     // if guest token is expired, get a new one and try again
     if (obj?.errors) {

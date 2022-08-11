@@ -37,7 +37,7 @@ export async function queryToUnparsedTweets(
         include_ext_trusted_friends_metadata: "true",
         send_error_codes: "true",
         simple_quoted_tweet: "true",
-        q: query,
+        q: query,                             // <-- 🚨🚨🚨
         tweet_search_mode: "live",
         count: "20",
         query_source: "typed_query",
@@ -48,7 +48,7 @@ export async function queryToUnparsedTweets(
     const paramsString = new URLSearchParams(params).toString();
     const url = apiBase + "2/search/adaptive.json?" + paramsString;
 
-    let guestToken = currentGuestToken;
+    let guestToken = currentGuestToken || await newGuestToken(fetchFn);
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     // if guest token is expired, get a new one and try again
     if (obj?.errors || JSON.stringify(obj) === "{}") {

@@ -34,8 +34,9 @@ export interface TweetURLs {
     fullURL: string
 }
 /**
- * @param url the url of the quoted tweet
+ * @param url the url of the quoted tweet (not sure why i would need this given 
+ * that i already have `user` and `id`)
  */
 export interface Quote extends Tweet {
-    url?: any;
+    // url?: any;
 }

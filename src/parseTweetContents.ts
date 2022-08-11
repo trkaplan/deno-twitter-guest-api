@@ -17,6 +17,7 @@ export function parseTweetContents(tweetContents: any): Tweet | Quote | null {
         user: tweetContents.core.user_results.result.legacy.screen_name,
         text: tweetContents.legacy.full_text,
     }
+    // console.log(mainTweet.text)
     const media = tweetContents.legacy.entities?.media;
     if (media) {
         mainTweet.media = []
@@ -45,8 +46,9 @@ export function parseTweetContents(tweetContents: any): Tweet | Quote | null {
         const quote: Quote | null = parseTweetContents(tweetContents);
         if (quote) {
             mainTweet.quote = quote;
-            mainTweet.quote.url = tweetContents.legacy.quoted_status_permalink
-            delete mainTweet.quote.url.display
+            // not sure y tf i need these 2 lines of code ?????
+            // mainTweet.quote.url = tweetContents.legacy.quoted_status_permalink
+            // delete mainTweet.quote.url.display
         }
         
     }
