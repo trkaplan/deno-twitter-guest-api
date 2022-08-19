@@ -120,7 +120,6 @@ export async function queryToTweets(
       // if not a retweet, add to new list of tweets
       tweetsMinusRetweetDupes.push(tweet);
     }
-    
   }
   parsedTweets = tweetsMinusRetweetDupes;
   // add user retweet info to original tweet
@@ -168,7 +167,7 @@ export async function queryToTweets(
         // allowed chars in twitter name are same as \w https://web.archive.org/web/20210506165356/https://www.techwalla.com/articles/what-characters-are-allowed-in-a-twitter-name
         // FIXME: lookback not supported in safari yet
         // const queryUsers = query.match(/(?<=from:)([\w]+)/g);
-        const queryUsers = query.match(/from:([\w]+)/g)?.map(x => x.substring(5))
+        const queryUsers = query.match(/from:\w+/g)?.map(x => x.substring(5))
         // add quoted tweet id to array of quoted tweet ids if different 
         // user to feed user
         const isDiffUser = ! queryUsers?.includes(quotedTweet.user)
@@ -186,7 +185,7 @@ export async function queryToTweets(
   for (const tweet of parsedTweets) {
     // if tweet id is in quotedIds, it is a quoted tweet to be removed
     if (quotedIds.includes(tweet.id)) {
-      // don't add nothing
+      // don't add it
     } else {
       tempTweets.push(tweet);
     }
@@ -195,6 +194,8 @@ export async function queryToTweets(
 
   return parsedTweets;
 }
+
+// TODO: implement this v1 twitter api
 
 // const token = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
 // const fetchTweetsFromUser = async (screenName, count) => {

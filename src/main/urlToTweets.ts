@@ -82,7 +82,7 @@ export async function urlToTweets(
 
     // if prev tweet group is diff user, its first tweet of a reply
     if (! prevTweetIsSameUser) {
-        const i = mainTweetIndex;
+        // const i = mainTweetIndex; // <-- 🚨🚨🚨 y tf is this here?? just commented out, but leaving bc might be there for a reason
         allParsedTweets.push(...mainTweet);
         if (nextTweetGroup) {
             const thread: Tweet[] = nextTweetGroup;
