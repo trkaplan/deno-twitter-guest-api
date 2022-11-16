@@ -1,6 +1,7 @@
 import { currentGuestToken, newGuestToken } from "./guestToken.ts";
 import { AUTHORIZATION, apiBase } from "../constants.ts";
 import { defaultFetch } from "./defaultFetch.ts";
+import { FetchFn } from "../types.ts";
 
 /**
  * call twitter API to get all tweets on a the page with tweet id tweetID
@@ -10,11 +11,12 @@ import { defaultFetch } from "./defaultFetch.ts";
  */
 export async function idToUnparsedTweets(
     tweetID: string,
+    cursor: string,
     includeRecommendedTweets: boolean = false,
-    fetchFn: (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any> = defaultFetch
+    fetchFn: FetchFn = defaultFetch
     ): Promise<Array<any>> {
     
-    const variables = {
+    const variables: any = {
         "focalTweetId":tweetID,
         "with_rux_injections":includeRecommendedTweets, // true = include recommended tweets
         "includePromotedContent":false, // true = include promoted tweets (ads)
@@ -34,6 +36,9 @@ export async function idToUnparsedTweets(
         "__fs_responsive_web_uc_gql_enabled":false, // 🚨🚨🚨🚨🚨 idk????
         "__fs_responsive_web_edit_tweet_api_enabled":false, // 🚨🚨🚨🚨🚨 idk????
     }
+    if (cursor !== "") {
+        variables["cursor"] =  cursor;
+    }
     let url = apiBase + "graphql/L1DeQfPt7n3LtTvrBqkJ2g/TweetDetail?variables="
                 + encodeURI(JSON.stringify(variables));
 
@@ -44,8 +49,11 @@ export async function idToUnparsedTweets(
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const tweets = obj?.data?.threaded_conversation_with_injections_v2
-                    ?.instructions?.[0]?.entries;
-    // console.log(tweets);
+    obj = obj?.data?.threaded_conversation_with_injections_v2
+        ?.instructions?.[0];
+    let tweets = obj?.entries;
+    if (tweets === undefined) {
+        tweets = obj?.moduleItems;
+    }
     return tweets;
 }

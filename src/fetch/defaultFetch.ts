@@ -17,5 +17,5 @@ export async function defaultFetch(
             "headers": headers,
         })
         .then(r => r.json())
-        .catch(() => ({}));
+        .catch(e => ({}));
 }

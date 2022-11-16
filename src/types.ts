@@ -1,42 +1,44 @@
+
+export type Option<T> = T | null;
+export type FetchFn = (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any>;
+
 /**
  * @param id id number of tweet (last part of url)
  * @param user username of the account who posted the tweet
  * @param text the text of the tweet
- * @param threadID id of the first tweet in the thread this tweet is in
+ * @param threadId id of the first tweet in the thread this tweet is in
  */
- export interface Tweet {
-    id: string;
-    user: string;
-    text: string;
-    media?: TweetMedia[];
-    urls?: TweetURLs[];
-    quote?: Quote;
-    isThread?: boolean;
-    threadID?: string;
+export interface Tweet {
+    id: string,
+    user: string,
+    text: string,
+    media?: Option<TweetMedia[]>,
+    urls?: Option<TweetURLs[]>,
+    quote?: Option<Tweet>,
+    threadId?: Option<string>,
+    extra?: Option<TweetExtra>,
 }
 /**
  * @param shortenedImgURL the twitter shortened url
  * @param fullImgURL the original image url
- * @param type photo or video
+ * @param kind photo or video
  */
 export interface TweetMedia {
-    shortenedImgURL: string
-    fullImgURL: string
-    type: string
-    videoURL?: string
+    shortenedImgUrl: string,
+    fullImgUrl: string,
+    kind: string,
+    videoUrl: Option<string>,
 }
 /**
  * @param shortenedURL the twitter shortened url
  * @param fullURL the original url
  */
 export interface TweetURLs {
-    shortenedURL: string
-    fullURL: string
+    shortenedUrl: string,
+    fullUrl: string,
 }
-/**
- * @param url the url of the quoted tweet (not sure why i would need this given 
- * that i already have `user` and `id`)
- */
-export interface Quote extends Tweet {
-    // url?: any;
+interface TweetExtra {
+    date: string,
+    retweetedBy: Option<string[]>,
+    faves: number,
 }

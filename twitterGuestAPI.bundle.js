@@ -15,9 +15,9 @@ async function defaultFetch(url, method, AUTHORIZATION, xGuestToken = "") {
         "method": method,
         "credentials": "omit",
         "headers": headers
-    }).then((r)=>r.json()).catch(()=>({}));
+    }).then((r)=>r.json()).catch((e)=>({}));
 }
-let currentGuestToken = await newGuestToken() || "fake-token";
+let currentGuestToken = "";
 async function newGuestToken(fetchFn = defaultFetch) {
     const url = "https://api.twitter.com/1.1/guest/activate.json";
     const obj = await fetchFn(url, "POST", AUTHORIZATION, "").catch(()=>{
@@ -26,7 +26,7 @@ async function newGuestToken(fetchFn = defaultFetch) {
     });
     return obj?.guest_token;
 }
-async function idToUnparsedTweets(tweetID, includeRecommendedTweets = false, fetchFn = defaultFetch) {
+async function idToUnparsedTweets(tweetID, cursor, includeRecommendedTweets = false, fetchFn = defaultFetch) {
     const variables = {
         "focalTweetId": tweetID,
         "with_rux_injections": includeRecommendedTweets,
@@ -47,148 +47,227 @@ async function idToUnparsedTweets(tweetID, includeRecommendedTweets = false, fet
         "__fs_responsive_web_uc_gql_enabled": false,
         "__fs_responsive_web_edit_tweet_api_enabled": false
     };
+    if (cursor !== "") {
+        variables["cursor"] = cursor;
+    }
     let url = apiBase + "graphql/L1DeQfPt7n3LtTvrBqkJ2g/TweetDetail?variables=" + encodeURI(JSON.stringify(variables));
-    let guestToken = currentGuestToken;
+    let guestToken = currentGuestToken || await newGuestToken(fetchFn);
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     if (obj?.errors) {
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const tweets = obj?.data?.threaded_conversation_with_injections_v2?.instructions?.[0]?.entries;
+    obj = obj?.data?.threaded_conversation_with_injections_v2?.instructions?.[0];
+    let tweets = obj?.entries;
+    if (tweets === undefined) {
+        tweets = obj?.moduleItems;
+    }
     return tweets;
 }
-function parseTweetContents(tweetContents) {
-    tweetContents = tweetContents.itemContent?.tweet_results?.result || tweetContents.quoted_status_result.result;
-    if (tweetContents === undefined) {
+function parseUrls(json) {
+    let urlsJson = json["entities"]?.["urls"];
+    if (urlsJson === undefined) {
         return null;
     }
-    const mainTweet = {
-        id: tweetContents.legacy.id_str,
-        user: tweetContents.core.user_results.result.legacy.screen_name,
-        text: tweetContents.legacy.full_text
-    };
-    const media = tweetContents.legacy.entities?.media;
-    if (media) {
-        mainTweet.media = [];
-        for (const img of media){
-            const item = {
-                shortenedImgURL: img.url,
-                fullImgURL: img.media_url_https,
-                type: img.type
+    let urls = [];
+    for (let urlJson of urlsJson){
+        let item = {
+            shortenedUrl: urlJson["url"],
+            fullUrl: urlJson["expanded_url"]
+        };
+        urls.push(item);
+    }
+    return urls;
+}
+function parseMedia(json) {
+    let mediaJson = json["extended_entities"]?.["media"];
+    if (mediaJson !== undefined) {
+        let media = [];
+        for (let item of mediaJson){
+            let shortenedImgUrl = item["url"];
+            let fullImgUrl = item["media_url_https"];
+            let kind = item["type"];
+            let videoUrl = null;
+            if (kind === "video") {
+                let variants = item["video_info"]["variants"];
+                let highestBitrate = 0;
+                let highestBitrateMp4Url = "";
+                for (let variant of variants){
+                    let bitrate = variant["bitrate"] ?? 0;
+                    if (bitrate > highestBitrate) {
+                        highestBitrate = bitrate;
+                        highestBitrateMp4Url = variant["url"];
+                    }
+                }
+                videoUrl = highestBitrateMp4Url;
+            } else if (kind === "animated_gif") {
+                videoUrl = item["video_info"]["variants"][0]["url"];
+            }
+            let mediaItem = {
+                shortenedImgUrl,
+                fullImgUrl,
+                kind,
+                videoUrl
             };
-            mainTweet.media.push(item);
+            media.push(mediaItem);
         }
+        return media;
+    } else {
+        return null;
     }
-    const urls = tweetContents.legacy.entities.urls;
-    if (urls?.length > 0) {
-        mainTweet.urls = [];
-        for (const url of urls){
-            const item1 = {
-                shortenedURL: url.url,
-                fullURL: url.expanded_url
-            };
-            mainTweet.urls.push(item1);
-        }
-    }
-    const isQuote = tweetContents?.quoted_status_result;
-    if (isQuote) {
-        const quote = parseTweetContents(tweetContents);
-        if (quote) {
-            mainTweet.quote = quote;
-            mainTweet.quote.url = tweetContents.legacy.quoted_status_permalink;
-            delete mainTweet.quote.url.display;
-        }
-    }
-    return mainTweet;
+}
+function sleep(ms) {
+    return new Promise((resolve)=>setTimeout(resolve, ms));
 }
 async function urlToTweets(url, fetchFn = defaultFetch) {
-    const idFromInputURL = url.split("/")[5];
-    const tweetGroups = await idToUnparsedTweets(idFromInputURL, false, fetchFn);
-    const allParsedTweets = [];
-    const mainTweetIndex = getMainTweetIndex(tweetGroups, idFromInputURL);
-    const mainTweet = tweetGroupToTweets(tweetGroups[mainTweetIndex]);
-    let nextTweetGroup = [];
-    const nextGroup = tweetGroups[mainTweetIndex + 1];
-    console.log(nextGroup);
-    const isNotShowMore = nextGroup?.content?.itemContent?.cursorType !== "ShowMoreThreadsPrompt";
-    const nextGroupExists = nextGroup && isNotShowMore;
-    if (nextGroupExists) {
-        nextTweetGroup = tweetGroupToTweets(nextGroup);
-    }
-    console.log("HERE");
-    if (mainTweetIndex == 0) {
-        allParsedTweets.push(...mainTweet);
-        if (nextTweetGroup) {
-            const thread = nextTweetGroup;
-            if (thread?.[0]?.user === mainTweet[0].user) {
-                allParsedTweets.push(...thread);
+    const tweetId = url.split("/")[5];
+    let tweets = await urlToTweetsNoCursorPosition(tweetId, fetchFn);
+    let lastTweet = tweets[tweets.length - 1];
+    while(lastTweet.id === "more_tweets_in_thread"){
+        let cursor = lastTweet.text;
+        tweets.pop();
+        sleep(100);
+        let showMoreTweets = await urlToTweetsWithCursorPosition(tweetId, cursor, fetchFn);
+        let existingTweetIds = tweets.map((t)=>t.id);
+        for (let showMoreTweet of showMoreTweets){
+            if (!existingTweetIds.includes(showMoreTweet.id)) {
+                tweets.push(showMoreTweet);
             }
         }
-        return allParsedTweets;
+        lastTweet = tweets[tweets.length - 1];
     }
-    const prevTweetGroup = tweetGroupToTweets(tweetGroups[mainTweetIndex - 1]);
-    const prevTweetIsSameUser = prevTweetGroup[0].user === mainTweet[0].user;
-    if (!prevTweetIsSameUser) {
-        allParsedTweets.push(...mainTweet);
-        if (nextTweetGroup) {
-            const thread1 = nextTweetGroup;
-            if (thread1?.[0]?.user === mainTweet[0].user) {
-                allParsedTweets.push(...thread1);
-            }
-        }
-        return allParsedTweets;
-    }
-    if (prevTweetIsSameUser) {
-        allParsedTweets.push(...mainTweet);
-    }
-    return allParsedTweets;
+    return tweets;
 }
-function getMainTweetIndex(tweetGroups, idFromInputURL) {
-    for(let i = 0; i < tweetGroups.length; i++){
-        const entryId = tweetGroups[i].entryId;
-        const id = entryId?.substring(6);
-        if (id === idFromInputURL) {
+async function urlToTweetsWithCursorPosition(tweetId, cursor, fetchFn) {
+    let tweetGroupsJson = await idToUnparsedTweets(tweetId, cursor, false, fetchFn);
+    let tweetGroup = tweetGroupsJson;
+    return tweetGroupToTweets(tweetGroup);
+}
+async function urlToTweetsNoCursorPosition(tweetId, fetchFn) {
+    let tweetGroups = await idToUnparsedTweets(tweetId, "", false, fetchFn);
+    let mainTweetIndex = getMainTweetIndex(tweetGroups, tweetId);
+    let mainGroupTweets = tweetGroupToTweetOrTweets(tweetGroups[mainTweetIndex]);
+    let nextGroupTweets = [];
+    let nextGroup = tweetGroups[mainTweetIndex + 1];
+    if (nextGroup !== undefined) {
+        nextGroupTweets = tweetGroupToTweetOrTweets(nextGroup);
+    }
+    if (mainTweetIndex == 0) {
+        if (nextGroupTweets.length > 0 && nextGroupTweets[0].user == mainGroupTweets[0].user) {
+            mainGroupTweets.push(...nextGroupTweets);
+        }
+        return mainGroupTweets;
+    }
+    let prevGroupTweets = tweetGroupToTweetOrTweets(tweetGroups[mainTweetIndex - 1]);
+    let prevTweetIsSameUser = prevGroupTweets[0].user === mainGroupTweets[0].user;
+    if (prevTweetIsSameUser) {
+        return mainGroupTweets;
+    } else {
+        if (nextGroupTweets.length > 0 && nextGroupTweets[0].user == mainGroupTweets[0].user) {
+            mainGroupTweets.push(...nextGroupTweets);
+        }
+        return mainGroupTweets;
+    }
+}
+function getMainTweetIndex(tweetGroups, tweetId) {
+    for (let [i, tweetGroup] of tweetGroups.entries()){
+        let entryId = tweetGroup["entryId"];
+        let id = entryId.substring(6);
+        if (id === tweetId) {
             return i;
         }
     }
     return 0;
 }
-function tweetItemGroupToTweet(tweetContents) {
-    const parsedTweet = parseTweetContents(tweetContents);
-    return parsedTweet;
-}
-function tweetModuleGroupToTweets(tweetContents) {
-    let tweets = [];
-    for (const tweetItem of tweetContents){
-        const tweetContents1 = tweetItem.item;
-        console.log("tweetContents");
-        console.log(tweetContents1);
-        if (tweetContents1?.itemContent?.displayTreatment?.actionText === "Show replies") {
-            break;
+function tweetGroupToTweetOrTweets(tweetGroup) {
+    let contents = tweetGroup["content"]?.["items"];
+    if (contents !== undefined) {
+        return tweetGroupToTweets(contents);
+    } else {
+        let tweet = parseTweetContents(tweetGroup["content"]["itemContent"]);
+        if (tweet !== null) {
+            return [
+                tweet
+            ];
+        } else {
+            return [];
         }
-        const parsedTweet = parseTweetContents(tweetContents1);
-        if (parsedTweet === null) {
-            break;
-        }
-        tweets.push(parsedTweet);
     }
-    return tweets;
 }
 function tweetGroupToTweets(tweetGroup) {
-    const returnTweets = [];
-    const contents = tweetGroup.content?.items;
-    if (contents) {
-        const tweets = tweetModuleGroupToTweets(contents);
-        if (tweets) {
-            returnTweets.push(...tweets);
+    return tweetGroup.map((tweetItem)=>{
+        let tweet = parseTweetContents(tweetItem["item"]["itemContent"]);
+        if (tweet !== null) {
+            return tweet;
+        } else {
+            throw "tweet missing";
+        }
+    });
+}
+function parseTweetContents(unparsedTweet) {
+    unparsedTweet = unparsedTweet["tweet_results"]?.["result"] ?? unparsedTweet["result"];
+    if (unparsedTweet !== undefined) {
+        let kind = itemType(unparsedTweet);
+        switch(kind){
+            case "Tweet":
+                break;
+            case "TweetWithVisibilityResults":
+                unparsedTweet = unparsedTweet["tweet"];
+                break;
+            case "TweetTombstone":
+                return createMissingTweet(unparsedTweet);
+            default:
+                throw `idk what type this is: ${kind}`;
         }
     } else {
-        const tweet = tweetItemGroupToTweet(tweetGroup.content);
-        if (tweet) {
-            returnTweets.push(tweet);
+        let kind1 = itemType(unparsedTweet);
+        if (kind1 === "TimelineTimelineCursor") {
+            let showMoreCursor = unparsedTweet["value"];
+            return {
+                id: "more_tweets_in_thread",
+                user: "",
+                text: showMoreCursor
+            };
+        } else {
+            return null;
         }
     }
-    return returnTweets;
+    let id = unparsedTweet["legacy"]["id_str"];
+    let user = unparsedTweet["core"]["user_results"]["result"]["legacy"]["screen_name"];
+    let text = unparsedTweet["legacy"]["full_text"];
+    let media = parseMedia(unparsedTweet["legacy"]);
+    let urls = parseUrls(unparsedTweet["legacy"]);
+    let quote = null;
+    let quoteContents = unparsedTweet["quoted_status_result"];
+    if (quoteContents !== undefined) {
+        let tweet = parseTweetContents(quoteContents);
+        if (tweet !== null) {
+            quote = tweet;
+        }
+    }
+    return {
+        id,
+        user,
+        text,
+        media,
+        urls,
+        quote
+    };
+}
+function itemType(item) {
+    let type = item["entryType"] ?? item["itemType"] ?? item["__typename"];
+    if (type === undefined) {
+        throw `can't find type:\n${item}`;
+    }
+    return type;
+}
+function createMissingTweet(unparsedTweet) {
+    let txt = unparsedTweet["tombstone"]["text"]["text"];
+    return {
+        id: "",
+        user: "unknown",
+        text: `<<< ${txt.slice(0, txt.length - 11)} >>>`
+    };
 }
 async function queryToUnparsedTweets(query, fetchFn = defaultFetch) {
     const params = {
@@ -226,142 +305,98 @@ async function queryToUnparsedTweets(query, fetchFn = defaultFetch) {
     };
     const paramsString = new URLSearchParams(params).toString();
     const url = apiBase + "2/search/adaptive.json?" + paramsString;
-    let guestToken = currentGuestToken;
+    let guestToken = currentGuestToken || await newGuestToken(fetchFn);
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     if (obj?.errors || JSON.stringify(obj) === "{}") {
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const gObj = obj?.globalObjects;
-    return [
-        gObj?.tweets,
-        gObj?.users
-    ];
+    return obj;
 }
 async function queryToTweets(query, fetchFn = defaultFetch) {
-    const [tweets, users] = await queryToUnparsedTweets(query, fetchFn);
-    let parsedTweets = [];
-    const userIdToName = {};
-    for(const key in users){
-        const item = users[key];
-        userIdToName[item.id_str] = item.screen_name;
+    let parsedTweetsMap = new Map();
+    let fetchJson = await queryToUnparsedTweets(query, fetchFn);
+    let usersJson = fetchJson["globalObjects"]?.["users"];
+    if (usersJson === undefined) return [];
+    let userIdToNameMap = new Map();
+    for (let userJson of Object.values(usersJson)){
+        let id = userJson["id_str"];
+        let name = userJson["screen_name"];
+        userIdToNameMap.set(id, name);
     }
-    for(const key1 in tweets){
-        const item1 = tweets[key1];
-        const tweet = {
-            id: item1.id_str,
-            user: userIdToName[item1.user_id_str],
-            text: item1.full_text,
-            date: item1.created_at
+    let tweetsJson = fetchJson["globalObjects"]["tweets"];
+    if (tweetsJson === undefined) {
+        throw "this will never trigger";
+    }
+    for (let tweetJson of Object.values(tweetsJson)){
+        let parsedTweet = {
+            id: tweetJson["id_str"] ?? "",
+            user: userIdToNameMap.get(tweetJson["user_id_str"] ?? "") ?? "",
+            text: tweetJson["full_text"] ?? ""
         };
-        const media = item1?.extended_entities?.media;
-        if (media) {
-            tweet.media = [];
-            for (const elem of media){
-                const item2 = {
-                    shortenedImgURL: elem.url,
-                    fullImgURL: elem.media_url_https,
-                    type: elem.type
-                };
-                if (item2.type === "video") {
-                    const highestBitrateMP4URL = elem.video_info?.variants?.sort((a, b)=>{
-                        return (b.bitrate ?? -1) - (a.bitrate ?? -1);
-                    })?.[0]?.url;
-                    item2.videoURL = highestBitrateMP4URL;
-                }
-                tweet.media.push(item2);
-            }
-        }
-        const urls = item1?.entities?.urls;
-        if (urls?.length > 0) {
-            tweet.urls = [];
-            for (const url of urls){
-                const item3 = {
-                    shortenedURL: url.url,
-                    fullURL: url.expanded_url
-                };
-                tweet.urls.push(item3);
-            }
-        }
-        const hasQuote = item1?.quoted_status_id_str;
-        if (hasQuote) {
-            tweet.quotedTweetID = hasQuote;
-        }
-        const hasThread = item1.self_thread;
-        if (hasThread) {
-            tweet.isThread = true;
-            tweet.threadID = hasThread.id_str;
+        parsedTweet.media = parseMedia(tweetJson);
+        parsedTweet.urls = parseUrls(tweetJson);
+        parsedTweet.threadId = tweetJson["self_thread"]?.["id_str"] ?? null;
+        parsedTweet.extra = {
+            date: tweetJson["created_at"] ?? "",
+            retweetedBy: null,
+            faves: tweetJson["favorite_count"] ?? 0
+        };
+        let quotedTweetId = tweetJson["quoted_status_id_str"] ?? null;
+        let retweetedTweetId = tweetJson["retweeted_status_id_str"] ?? null;
+        parsedTweetsMap.set(parsedTweet.id, [
+            parsedTweet,
+            quotedTweetId,
+            retweetedTweetId
+        ]);
+    }
+    let timelineTweetIds = fetchJson["timeline"]["instructions"][0]["addEntries"]["entries"].reduce((accum, item)=>{
+        let id = item["entryId"] ?? "";
+        if (id.length == 26) {
+            return [
+                ...accum,
+                id.substring(7)
+            ];
         } else {
-            tweet.isThread = false;
+            return accum;
         }
-        const retweetTweetId = item1.retweeted_status_id_str;
-        if (retweetTweetId) {
-            tweet.retweetTweetId = retweetTweetId;
+    }, []);
+    let parsedTweets = timelineTweetIds.map((id)=>{
+        let item = parsedTweetsMap.get(id);
+        if (item === undefined) {
+            throw "this will never trigger";
         }
-        parsedTweets.push(tweet);
-    }
-    const tweetsMinusRetweetDupes = [];
-    const trackRetweets = [];
-    for (const tweet1 of parsedTweets){
-        const isRetweetItem = tweet1.retweetTweetId;
-        if (isRetweetItem) {
-            const id = isRetweetItem;
-            const user = tweet1.user;
-            trackRetweets.push([
-                id,
-                user
-            ]);
-        } else {
-            tweetsMinusRetweetDupes.push(tweet1);
-        }
-    }
-    parsedTweets = tweetsMinusRetweetDupes;
-    for (const tweet2 of parsedTweets){
-        const matches = trackRetweets.filter((x)=>x[0] === tweet2.id);
-        if (matches) {
-            tweet2.retweetedBy = matches.map((x)=>x[1]);
-        }
-    }
-    const quotedIds = [];
-    let tempTweets = [];
-    for (const tweet3 of parsedTweets){
-        const quotedTweetID = tweet3.quotedTweetID;
-        if (quotedTweetID) {
-            const quotedTweet = parsedTweets.find((t)=>t.id === quotedTweetID);
-            if (quotedTweet) {
-                tweet3.quote = quotedTweet;
-                const queryUsers = query.match(/from:([\w]+)/g)?.map((x)=>x.substring(5));
-                const isDiffUser = !queryUsers?.includes(quotedTweet.user);
-                if (isDiffUser) {
-                    quotedIds.push(quotedTweet.id);
-                }
+        let [tweetItem, quotedTweetId, retweetedTweetId] = item;
+        if (retweetedTweetId !== null) {
+            let retweetedBy = tweetItem.user;
+            let item1 = parsedTweetsMap.get(retweetedTweetId);
+            if (item1 === undefined) {
+                throw "this will never trigger";
+            }
+            [tweetItem, quotedTweetId] = item1;
+            if (tweetItem.extra !== null && tweetItem.extra !== undefined) {
+                tweetItem.extra.retweetedBy = [
+                    retweetedBy
+                ];
             }
         }
-        tempTweets.push(tweet3);
-    }
-    parsedTweets = tempTweets;
-    tempTweets = [];
-    for (const tweet4 of parsedTweets){
-        if (quotedIds.includes(tweet4.id)) {} else {
-            tempTweets.push(tweet4);
+        if (quotedTweetId !== null) {
+            let item2 = parsedTweetsMap.get(quotedTweetId);
+            if (item2 === undefined) {
+                throw "this will never trigger";
+            }
+            let [qTweetItem] = item2;
+            tweetItem.quote = qTweetItem;
         }
-    }
-    parsedTweets = tempTweets;
+        return tweetItem;
+    });
     return parsedTweets;
 }
 async function urlToRecommendedTweets(url, fetchFn = defaultFetch) {
     const idFromInputURL = url.split("/")[5];
-    const tweetGroups = await idToUnparsedTweets(idFromInputURL, true, fetchFn);
-    const allParsedTweets = [];
+    const tweetGroups = await idToUnparsedTweets(idFromInputURL, "", true, fetchFn);
     let recommendedTweets = tweetGroups[tweetGroups.length - 2].content.items;
-    for (const tweet of recommendedTweets){
-        const tweetContents = tweet.item;
-        const parsedTweet = parseTweetContents(tweetContents);
-        if (parsedTweet) {
-            allParsedTweets.push(parsedTweet);
-        }
-    }
-    return allParsedTweets;
+    return tweetGroupToTweets(recommendedTweets);
 }
 export { urlToTweets as urlToTweets };
 export { queryToTweets as queryToTweets };

@@ -1,161 +1,170 @@
-import { Tweet } from "../types.ts";
+import { Tweet, Option, FetchFn } from "../types.ts";
 import { idToUnparsedTweets } from "../fetch/idToUnparsedTweets.ts";
-import { parseTweetContents } from "../parseTweetContents.ts";
 import { defaultFetch } from "../fetch/defaultFetch.ts";
+import { parseMedia, parseUrls } from "./parsing.ts";
 
-/**
-get a tweet/tweet-thread in a parsed format (most of the junk removed), as a
-list of tweets, starting with the first tweet
-
-if more information is required than in @interface Tweet, use getUnparsedTweets() instead
-*/
-export async function urlToTweets(
-    url: string,
-    fetchFn: (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any> = defaultFetch
-    ): Promise<Tweet[]> {
-
-    const idFromInputURL = url.split("/")[5];
-    const tweetGroups = await idToUnparsedTweets(idFromInputURL, false, fetchFn);
-    const allParsedTweets: Tweet[] = [];
-
-    // find out which tweet group contains the main tweet
-    const mainTweetIndex: number = getMainTweetIndex(tweetGroups, idFromInputURL);
-
-    // get main tweet
-    const mainTweet: Tweet[] = tweetGroupToTweets(tweetGroups[mainTweetIndex]);
-    
-    /* ---- Examples of tweet patterns we need to match ----
-
-    1: (user1) -> user2 -> user3 -> user4   (single tweet)
-
-    2: user1 -> (user2) -> user3 -> user4   (single reply)
-
-    3: (user1) -> user1 -> user1 -> user3   (start tweet thread)
-    4: user1 -> (user1) -> user1 -> user3   (mid tweet thread)
-    5: user1 -> user1 -> (user1) -> user3   (end tweet thread)
-
-    6: user1 -> (user2) -> user2 -> user2   (start reply thread)
-    7: user1 -> user2 -> (user2) -> user2   (mid reply thread)
-    8: user1 -> user2 -> user2 -> (user2)   (end reply thread)
-
-    TWO MAIN TYPES OF TWEETS WE NEED TO PARSE:
-    1: tweet group at position 0 OR with diff user in prev tweet group
-          - if next tweet group is diff user, just add main tweet group to 
-            allParsedTweets
-          - if next tweet group is same user, add main tweet group, AND next tweet
-            group (thread) to allParsedTweets
-    2: tweet group with same user prev to main tweet group. this is either mid 
-       or end of thread/reply-thread
-          - for this, just add main tweet group to allParsedTweets
-    */
-
-    // if there is a next tweet group, get it
-    let nextTweetGroup: Tweet[] = [];
-   
-    const nextGroup = tweetGroups[mainTweetIndex + 1]
-    // console.log(nextGroup);
-    //                                   this handles show more button
-    const isNotShowMore = nextGroup?.content?.itemContent?.cursorType !== "ShowMoreThreadsPrompt";
-    const nextGroupExists = nextGroup && isNotShowMore;
-    if (nextGroupExists) {
-        nextTweetGroup = tweetGroupToTweets(nextGroup);
-    }
-    // console.log("HERE");
-
-    // if main tweet is first tweet, add first tweetGroup (main tweet), and 
-    // second tweetGroup (the thread) if it is same user, to allParsedTweets
-    if (mainTweetIndex == 0) {
-        allParsedTweets.push(...mainTweet);
-        if (nextTweetGroup) {
-            const thread: Tweet[] = nextTweetGroup;
-            // this is also false if thread doesn't exist
-            if (thread?.[0]?.user === mainTweet[0].user) {
-                allParsedTweets.push(...thread);
-            }
-        }
-        return allParsedTweets;
-    }
-
-    // get prev tweet group and next tweet group
-    const prevTweetGroup: Tweet[] = tweetGroupToTweets(tweetGroups[mainTweetIndex - 1]);
-    const prevTweetIsSameUser: boolean = prevTweetGroup[0].user === mainTweet[0].user;
-
-    // if prev tweet group is diff user, its first tweet of a reply
-    if (! prevTweetIsSameUser) {
-        // const i = mainTweetIndex; // <-- 🚨🚨🚨 y tf is this here?? just commented out, but leaving bc might be there for a reason
-        allParsedTweets.push(...mainTweet);
-        if (nextTweetGroup) {
-            const thread: Tweet[] = nextTweetGroup;
-            // this is also false if thread doesn't exist
-            if (thread?.[0]?.user === mainTweet[0].user) {
-                allParsedTweets.push(...thread);
-            }
-        }
-        return allParsedTweets;
-    }
-
-    // if prev tweet group is same user, it is mid/end of tweet thread, so just 
-    // return main tweet group
-    if (prevTweetIsSameUser) {
-        allParsedTweets.push(...mainTweet);
-    }
-
-    return allParsedTweets;
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getMainTweetIndex(tweetGroups: any, idFromInputURL: string): number {
-    for (let i=0; i < tweetGroups.length; i++) {
-        const entryId = tweetGroups[i].entryId;
-        // "tweet-1516856286738598375" -> "1516856286738598375"
-        const id = entryId?.substring(6);
-        if (id === idFromInputURL) {
-            return i;
+export async function urlToTweets(
+    url: string,
+    fetchFn: FetchFn = defaultFetch
+): Promise<Tweet[]> {
+    const tweetId = url.split("/")[5];
+    let tweets: Tweet[] = await urlToTweetsNoCursorPosition(tweetId, fetchFn);
+    let lastTweet = tweets[tweets.length -1];
+    while (lastTweet.id === "more_tweets_in_thread") {
+        let cursor: string = lastTweet.text;
+        tweets.pop();
+        sleep(100);
+        let showMoreTweets = await urlToTweetsWithCursorPosition(tweetId, cursor, fetchFn);
+        let existingTweetIds = tweets.map(t => t.id);
+        for (let showMoreTweet of showMoreTweets) {
+            if (! existingTweetIds.includes(showMoreTweet.id)) {
+                tweets.push(showMoreTweet);
+            }
+        }
+        lastTweet = tweets[tweets.length -1];
+    }
+    return tweets
+}
+
+async function urlToTweetsWithCursorPosition(
+    tweetId: string,
+    cursor: string,
+    fetchFn: FetchFn
+): Promise<Tweet[]> {
+    let tweetGroupsJson = await idToUnparsedTweets(tweetId, cursor, false, fetchFn);
+    let tweetGroup: any[] = tweetGroupsJson;
+    return tweetGroupToTweets(tweetGroup);
+}
+
+async function urlToTweetsNoCursorPosition(
+    tweetId: string,
+    fetchFn: FetchFn
+): Promise<Tweet[]> {
+    let tweetGroups: any[] = await idToUnparsedTweets(tweetId, "", false, fetchFn);
+    // console.log("tweetGroups", tweetGroups);
+    let mainTweetIndex: number = getMainTweetIndex(tweetGroups, tweetId);
+    let mainGroupTweets: Tweet[] = tweetGroupToTweetOrTweets(tweetGroups[mainTweetIndex]);
+    let nextGroupTweets: Tweet[] = [];
+    let nextGroup = tweetGroups[mainTweetIndex + 1];
+    if (nextGroup !== undefined) {
+        nextGroupTweets = tweetGroupToTweetOrTweets(nextGroup);
+    }
+    if (mainTweetIndex == 0) {
+        if (nextGroupTweets.length > 0 && nextGroupTweets[0].user == mainGroupTweets[0].user) {
+            mainGroupTweets.push(...nextGroupTweets);
+        }
+        return mainGroupTweets;
+    }
+    let prevGroupTweets: Tweet[] = tweetGroupToTweetOrTweets(tweetGroups[mainTweetIndex - 1]);
+    let prevTweetIsSameUser: boolean = prevGroupTweets[0].user === mainGroupTweets[0].user;
+    if (prevTweetIsSameUser) {
+        return mainGroupTweets;
+    } else {
+        if (nextGroupTweets.length > 0 && nextGroupTweets[0].user == mainGroupTweets[0].user) {
+            mainGroupTweets.push(...nextGroupTweets);
+        }
+        return mainGroupTweets;
+    }
+}
+
+function getMainTweetIndex(tweetGroups: any[], tweetId: string): number {
+    for (let [i, tweetGroup] of tweetGroups.entries()) {
+        let entryId: string = tweetGroup["entryId"];
+        let id = entryId.substring(6);
+        if (id === tweetId) {
+          return i;
         }
     }
-    // will never reach this return, but typescript complains if it isn't there
     return 0;
 }
 
-function tweetItemGroupToTweet(tweetContents: any): Tweet | null {
-    const parsedTweet: Tweet | null = parseTweetContents(tweetContents);
-    return parsedTweet;
-}
-function tweetModuleGroupToTweets(tweetContents: any): Tweet[] | null {
-    let tweets: Tweet[] | null = [];
-    for (const tweetItem of tweetContents) {
-        const tweetContents = tweetItem.item;
-        // console.log("tweetContents");
-        // console.log(tweetContents);
-
-        // if its a "show more" item, dont add
-        if (tweetContents?.itemContent?.displayTreatment?.actionText === "Show replies") {
-            break;
+function tweetGroupToTweetOrTweets(tweetGroup: any): Tweet[] {
+    let contents: any[] | undefined = tweetGroup["content"]?.["items"];
+    if (contents !== undefined) {
+        return tweetGroupToTweets(contents);
+    } else {
+        let tweet: Option<Tweet> = parseTweetContents(tweetGroup["content"]["itemContent"]);
+        if (tweet !== null ) {
+            return [tweet];
+        } else {
+            return [];
         }
-
-        const parsedTweet: Tweet | null = parseTweetContents(tweetContents);
-
-        // if the tweet is null, it's a "show more" tweet, so end of thread
-        if (parsedTweet === null) {
-            break;
-        }
-        tweets.push(parsedTweet);
     }
-    return tweets;
 }
 
-function tweetGroupToTweets(tweetGroup: any): Tweet[] {
-    const returnTweets: Tweet[] = [];
-    const contents = tweetGroup.content?.items;
-    if (contents) {
-        const tweets = tweetModuleGroupToTweets(contents);
-        if (tweets) {
-            returnTweets.push(...tweets);
+export function tweetGroupToTweets(tweetGroup: any[]): Tweet[] {
+    return tweetGroup.map((tweetItem: any) =>  {
+        let tweet = parseTweetContents(tweetItem["item"]["itemContent"]);
+        if (tweet !== null) {
+            return tweet
+        } else {
+            throw "tweet missing"
+        }
+    })
+}
+
+function parseTweetContents(unparsedTweet: any): Option<Tweet> {
+    unparsedTweet = unparsedTweet["tweet_results"]?.["result"] ?? unparsedTweet["result"];
+    if (unparsedTweet !== undefined) {
+        let kind = itemType(unparsedTweet);
+        switch (kind) {
+            case "Tweet": break;
+            case "TweetWithVisibilityResults":
+                unparsedTweet = unparsedTweet["tweet"];
+                break;
+            case "TweetTombstone":
+                return createMissingTweet(unparsedTweet);
+            default: 
+                throw `idk what type this is: ${kind}`
         }
     } else {
-        const tweet = tweetItemGroupToTweet(tweetGroup.content)
-        if (tweet) {
-            returnTweets.push(tweet);
+        let kind = itemType(unparsedTweet);
+        if (kind === "TimelineTimelineCursor") {
+            let showMoreCursor: string = unparsedTweet["value"];
+            return {
+                id: "more_tweets_in_thread",
+                user: "",
+                text: showMoreCursor,
+            };
+        } else {
+            return null;
+        }
+    };
+    let id = unparsedTweet["legacy"]["id_str"];
+    let user = unparsedTweet["core"]["user_results"]["result"]["legacy"]["screen_name"];
+    let text = unparsedTweet["legacy"]["full_text"];
+    let media = parseMedia(unparsedTweet["legacy"]);
+    let urls = parseUrls(unparsedTweet["legacy"]);
+    let quote = null;
+    let quoteContents = unparsedTweet["quoted_status_result"];
+    if (quoteContents !== undefined) {
+        let tweet = parseTweetContents(quoteContents);
+        if (tweet !== null) {
+            quote = tweet;
         }
     }
-    return returnTweets;
+
+    return { id, user, text, media, urls, quote };
 }
+
+function itemType(item: any): string {
+    let type: string | undefined = item["entryType"] ?? item["itemType"] ?? item["__typename"];
+    if (type === undefined) {
+        throw `can't find type:\n${item}`
+    }
+    return type
+}
+  
+function createMissingTweet(unparsedTweet: any): Option<Tweet> {
+    let txt: string = unparsedTweet["tombstone"]["text"]["text"];
+    return { 
+        id: "",
+        user: "unknown",
+        text: `<<< ${txt.slice(0, txt.length - 11)} >>>`,
+    }
+}
+

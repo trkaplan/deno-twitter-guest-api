@@ -1,6 +1,7 @@
 import { currentGuestToken, newGuestToken } from "./guestToken.ts";
 import { AUTHORIZATION, apiBase } from "../constants.ts";
 import { defaultFetch } from "./defaultFetch.ts";
+import { FetchFn } from "../types.ts";
 
 /**
  * get unparsed twitter feed object from twitter search query
@@ -9,8 +10,8 @@ import { defaultFetch } from "./defaultFetch.ts";
  */
 export async function queryToUnparsedTweets(
     query: string,
-    fetchFn: (url: string, method: string, AUTHORIZATION: string, xGuestToken: string) => Promise<any> = defaultFetch
-    ): Promise<any[]> {
+    fetchFn: FetchFn = defaultFetch
+    ): Promise<any> {
 
     const params = {
         include_profile_interstitial_type: "1",
@@ -55,19 +56,5 @@ export async function queryToUnparsedTweets(
         guestToken = await newGuestToken(fetchFn);
         obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
     }
-    const gObj: TwitterQueryGlobalObjects = obj?.globalObjects;
-
-    return [gObj?.tweets, gObj?.users];
-}
-
-interface TwitterQueryGlobalObjects {
-    users: any;
-    tweets: any;
-    broadcasts?: any;
-    cards?: any;
-    lists?: any;
-    media?: any;
-    moments?: any;
-    places?: any;
-    topics?: any;
+    return obj;
 }
