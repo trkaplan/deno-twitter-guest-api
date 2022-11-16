@@ -45,7 +45,6 @@ async function urlToTweetsNoCursorPosition(
     fetchFn: FetchFn
 ): Promise<Tweet[]> {
     let tweetGroups: any[] = await idToUnparsedTweets(tweetId, "", false, fetchFn);
-    // console.log("tweetGroups", tweetGroups);
     let mainTweetIndex: number = getMainTweetIndex(tweetGroups, tweetId);
     let mainGroupTweets: Tweet[] = tweetGroupToTweetOrTweets(tweetGroups[mainTweetIndex]);
     let nextGroupTweets: Tweet[] = [];
@@ -108,8 +107,9 @@ export function tweetGroupToTweets(tweetGroup: any[]): Tweet[] {
 }
 
 function parseTweetContents(unparsedTweet: any): Option<Tweet> {
-    unparsedTweet = unparsedTweet["tweet_results"]?.["result"] ?? unparsedTweet["result"];
-    if (unparsedTweet !== undefined) {
+    const tempUnparsedTweet = unparsedTweet["tweet_results"]?.["result"] ?? unparsedTweet["result"];
+    if (tempUnparsedTweet !== undefined) {
+        unparsedTweet = tempUnparsedTweet;
         let kind = itemType(unparsedTweet);
         switch (kind) {
             case "Tweet": break;
@@ -147,11 +147,11 @@ function parseTweetContents(unparsedTweet: any): Option<Tweet> {
             quote = tweet;
         }
     }
-
     return { id, user, text, media, urls, quote };
 }
 
 function itemType(item: any): string {
+    if (item === undefined) { throw "idk" }
     let type: string | undefined = item["entryType"] ?? item["itemType"] ?? item["__typename"];
     if (type === undefined) {
         throw `can't find type:\n${item}`

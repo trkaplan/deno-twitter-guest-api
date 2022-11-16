@@ -205,8 +205,9 @@ function tweetGroupToTweets(tweetGroup) {
     });
 }
 function parseTweetContents(unparsedTweet) {
-    unparsedTweet = unparsedTweet["tweet_results"]?.["result"] ?? unparsedTweet["result"];
-    if (unparsedTweet !== undefined) {
+    const tempUnparsedTweet = unparsedTweet["tweet_results"]?.["result"] ?? unparsedTweet["result"];
+    if (tempUnparsedTweet !== undefined) {
+        unparsedTweet = tempUnparsedTweet;
         let kind = itemType(unparsedTweet);
         switch(kind){
             case "Tweet":
@@ -255,6 +256,9 @@ function parseTweetContents(unparsedTweet) {
     };
 }
 function itemType(item) {
+    if (item === undefined) {
+        throw "idk";
+    }
     let type = item["entryType"] ?? item["itemType"] ?? item["__typename"];
     if (type === undefined) {
         throw `can't find type:\n${item}`;
