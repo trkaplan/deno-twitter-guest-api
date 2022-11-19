@@ -17,7 +17,7 @@ export async function urlToTweets(
     while (lastTweet.id === "more_tweets_in_thread") {
         let cursor: string = lastTweet.text;
         tweets.pop();
-        sleep(100);
+        sleep(500);
         let showMoreTweets = await urlToTweetsWithCursorPosition(tweetId, cursor, fetchFn);
         let existingTweetIds = tweets.map(t => t.id);
         for (let showMoreTweet of showMoreTweets) {
