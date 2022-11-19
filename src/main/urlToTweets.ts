@@ -139,6 +139,7 @@ function parseTweetContents(unparsedTweet: any): Option<Tweet> {
     let text = unparsedTweet["legacy"]["full_text"];
     let media = parseMedia(unparsedTweet["legacy"]);
     let urls = parseUrls(unparsedTweet["legacy"]);
+    let threadId = unparsedTweet["legacy"]?.["self_thread"]?.["id_str"] ?? null;
     let quote = null;
     let quoteContents = unparsedTweet["quoted_status_result"];
     if (quoteContents !== undefined) {
@@ -147,7 +148,7 @@ function parseTweetContents(unparsedTweet: any): Option<Tweet> {
             quote = tweet;
         }
     }
-    return { id, user, text, media, urls, quote };
+    return { id, user, text, media, urls, quote, threadId };
 }
 
 function itemType(item: any): string {
@@ -167,4 +168,3 @@ function createMissingTweet(unparsedTweet: any): Option<Tweet> {
         text: `<<< ${txt.slice(0, txt.length - 11)} >>>`,
     }
 }
-

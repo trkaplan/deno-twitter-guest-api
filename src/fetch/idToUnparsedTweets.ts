@@ -44,10 +44,15 @@ export async function idToUnparsedTweets(
 
     let guestToken = currentGuestToken || await newGuestToken(fetchFn);
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
-    // if guest token is expired, get a new one and try again
     if (obj?.errors) {
-        guestToken = await newGuestToken(fetchFn);
-        obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
+        // if guest token is expired, get a new one and try again
+        if (obj.errors.code === 215) {
+            guestToken = await newGuestToken(fetchFn);
+            obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
+        } else {
+            console.log(`twitter get request error code: ${obj.errors.code}`)
+        }
+
     }
     obj = obj?.data?.threaded_conversation_with_injections_v2
         ?.instructions?.[0];
