@@ -120,7 +120,7 @@ for getUnparsedSearchQueryTweets():
    -> Look for one starting with "adaptive.json?"
 
 
--- iT SEEMS THE TWITTER STANDARD V1.1 API ACTUALLY WORKS WITH GUEST TOKEN TOO --
+-- IT SEEMS THE TWITTER STANDARD V1.1 API ACTUALLY WORKS WITH GUEST TOKEN TOO --
 
 https://developer.twitter.com/en/docs/twitter-api/v1
 
@@ -130,6 +130,3 @@ timeline:
 search:
   https://developer.twitter.com/en/docs/twitter-api/v1/tweets/search/overview
 ```
-
-## TODO
-- if thread contains show more button, need to get the next page of tweets

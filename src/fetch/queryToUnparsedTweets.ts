@@ -51,10 +51,14 @@ export async function queryToUnparsedTweets(
 
     let guestToken = currentGuestToken || await newGuestToken(fetchFn);
     let obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
-    // if guest token is expired, get a new one and try again
-    if (obj?.errors || JSON.stringify(obj) === "{}") {
-        guestToken = await newGuestToken(fetchFn);
-        obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
+    if (obj?.errors) {
+        // if guest token is invalid or expired, get a new one and try again
+        if (obj.errors.code === 215 || obj.errors.code === 200) {
+            guestToken = await newGuestToken(fetchFn);
+            obj = await fetchFn(url, "GET", AUTHORIZATION, guestToken);
+        } else {
+            console.log(`twitter get request error code: ${obj.errors.code}`)
+        }
     }
     return obj;
 }
