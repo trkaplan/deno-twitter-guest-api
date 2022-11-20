@@ -120,7 +120,7 @@ for getUnparsedSearchQueryTweets():
    -> Look for one starting with "adaptive.json?"
 
 
--- IT SEEMS THE TWITTER STANDARD V1.1 API ACTUALLY WORKS WITH GUEST TOKEN TOO --
+-- IT SEEMS THE TWITTER STANDARD V1.1 API ACTUALLY WORKS WITH GUEST BEARER TOKEN TOO --
 
 https://developer.twitter.com/en/docs/twitter-api/v1
 
